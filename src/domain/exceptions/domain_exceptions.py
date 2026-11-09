@@ -9,3 +9,9 @@ class UmbralInvalidoException(DomainException):
 
 class ImagenInvalidaException(DomainException):
     pass
+
+class ParametrosInvalidosException(DomainException):
+    pass
+
+class ModeloNoDisponibleException(DomainException):
+    pass

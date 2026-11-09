@@ -18,12 +18,23 @@ from PIL import Image
 
 from src.application.use_cases.estimate_yield_use_case import AnalizarImagenCosechaUseCase
 from src.application.dtos.estimate_dto import SolicitudEstimacionDTO
-from src.infrastructure.adapters.detectors.mock_detector_adapter import MockFruitDetectorAdapter
+from src.infrastructure.composition import construir_detector
 from src.domain.exceptions.domain_exceptions import DomainException
 
-# Inyección de dependencias (Puerto de Salida -> Adaptador Detector)
-detector_adapter = MockFruitDetectorAdapter(num_simulated_fruits=24)
+# Inyección de dependencias (Puerto de Salida -> Adaptador Detector).
+# Por defecto usa el detector con machine learning; SIKAFE_DETECTOR=mock usa el simulado.
+detector_adapter = construir_detector()
 use_case = AnalizarImagenCosechaUseCase(detector_adapter=detector_adapter)
+
+
+def _numero(valor, nombre, por_defecto=None):
+    """gr.Number devuelve None si el usuario borra el campo."""
+    if valor is None:
+        if por_defecto is None:
+            raise DomainException(f"El campo '{nombre}' no puede estar vacío.")
+        return por_defecto
+    return valor
+
 
 def procesar_estimacion(imagen, peso_g, oclusion, plantas_muestra, plantas_totales, umbral):
     if imagen is None:
@@ -38,15 +49,16 @@ def procesar_estimacion(imagen, peso_g, oclusion, plantas_muestra, plantas_total
 
     try:
         buffer = io.BytesIO()
-        imagen.save(buffer, format="JPEG")
+        # convert("RGB"): las PNG/webcam pueden venir en RGBA y JPEG no admite canal alfa.
+        imagen.convert("RGB").save(buffer, format="JPEG", quality=95)
         img_bytes = buffer.getvalue()
 
         solicitud = SolicitudEstimacionDTO(
             imagen_bytes=img_bytes,
-            peso_medio_fruto_g=float(peso_g),
-            factor_oclusion=float(oclusion),
-            plantas_muestra=int(plantas_muestra),
-            plantas_totales_lote=int(plantas_totales),
+            peso_medio_fruto_g=float(_numero(peso_g, "Peso Medio")),
+            factor_oclusion=float(_numero(oclusion, "Factor Oclusión")),
+            plantas_muestra=int(_numero(plantas_muestra, "Plantas Muestra")),
+            plantas_totales_lote=int(_numero(plantas_totales, "Plantas Lote Total")),
             umbral_confianza=float(umbral)
         )
 
@@ -91,6 +103,9 @@ with gr.Blocks(title="SIKAFE - Dashboard Agronómico", theme=theme) as demo:
         """
         # SIKAFE — Sistema Inteligente de Estimación de Cosecha de Café
         *Plataforma de Visión Artificial para la Estimación de Rendimiento Agronómico (Norte de Santander)*
+
+        > El modelo incluido se entrenó con escenas sintéticas. Para uso en campo,
+        > reentrénelo con fotos reales etiquetadas (ver README).
         """
     )
     
