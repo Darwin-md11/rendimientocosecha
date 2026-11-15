@@ -20,9 +20,10 @@ from src.application.use_cases.estimate_yield_use_case import AnalizarImagenCose
 from src.application.dtos.estimate_dto import SolicitudEstimacionDTO
 from src.infrastructure.composition import construir_detector
 from src.domain.exceptions.domain_exceptions import DomainException
+from src.infrastructure.adapters.ui.presentacion import banner_markdown, mensaje_estado
 
 # Inyección de dependencias (Puerto de Salida -> Adaptador Detector).
-# Por defecto usa el detector con machine learning; SIKAFE_DETECTOR=mock usa el simulado.
+# Ver composition.py: si el modelo configurado no carga, falla aqui con un mensaje claro.
 detector_adapter = construir_detector()
 use_case = AnalizarImagenCosechaUseCase(detector_adapter=detector_adapter)
 
@@ -79,7 +80,7 @@ def procesar_estimacion(imagen, peso_g, oclusion, plantas_muestra, plantas_total
 
         return (
             imagen_anotada,
-            "✅ Inferencia y estimación agronómica completadas.",
+            mensaje_estado(respuesta),
             respuesta.total_frutos,
             respuesta.porcentaje_madurez,
             respuesta.rendimiento_estimado_kg,
@@ -103,11 +104,10 @@ with gr.Blocks(title="SIKAFE - Dashboard Agronómico", theme=theme) as demo:
         """
         # SIKAFE — Sistema Inteligente de Estimación de Cosecha de Café
         *Plataforma de Visión Artificial para la Estimación de Rendimiento Agronómico (Norte de Santander)*
-
-        > El modelo incluido se entrenó con escenas sintéticas. Para uso en campo,
-        > reentrénelo con fotos reales etiquetadas (ver README).
         """
     )
+    # Banner permanente: procedencia del modelo y advertencia si no está validado.
+    gr.Markdown(banner_markdown(detector_adapter.info()))
     
     with gr.Row():
         with gr.Column(scale=5):

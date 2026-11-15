@@ -11,6 +11,7 @@ import numpy as np
 from PIL import Image
 
 from ....domain.models.coffee_cherry import BoundingBox, DeteccionFruto, EstadoMadurez
+from ....domain.models.modelo_info import FamiliaModelo, ModeloInfo
 from ....domain.ports.fruit_detector_port import FruitDetectorPort
 
 
@@ -18,6 +19,15 @@ class MockFruitDetectorAdapter(FruitDetectorPort):
     def __init__(self, num_simulated_fruits: int = 15, semilla: int = 42):
         self.num_simulated_fruits = num_simulated_fruits
         self.semilla = semilla
+
+    def info(self) -> ModeloInfo:
+        return ModeloInfo(
+            nombre="Detector simulado (cajas aleatorias)",
+            familia=FamiliaModelo.MOCK,
+            version="1",
+            datos_entrenamiento="ninguno: ignora el contenido de la imagen",
+            validado_con_datos_reales=False,
+        )
 
     def detectar_frutos(self, imagen: Image.Image, umbral_confianza: float = 0.40) -> List[DeteccionFruto]:
         width, height = imagen.size

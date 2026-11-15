@@ -2,8 +2,12 @@
 Entrenamiento y evaluacion del clasificador de madurez.
 
 Uso:
-    python -m src.infrastructure.ml.training                      # datos sinteticos
-    python -m src.infrastructure.ml.training --imagenes datos/    # + fotos reales
+    python -m ml.sintetico.training                      # datos sinteticos
+    python -m ml.sintetico.training --imagenes datos/    # + fotos reales
+
+Vive en ml/ (laboratorio), no en src/ (app): la app solo CARGA modelos y nunca
+reentrena por su cuenta. Al guardar se escribe tambien el manifiesto con el
+SHA-256 que la app verifica antes de cargar.
 
 Fotos reales: en la carpeta, cada `foto.jpg` necesita su mascara `foto_mask.png`
 (imagen de un canal; cada pixel vale 0=fondo, 1=verde, 2=pinton, 3=maduro,
@@ -20,11 +24,11 @@ import numpy as np
 from PIL import Image
 from sklearn.ensemble import HistGradientBoostingClassifier
 
-from .features import CLASES, LADO_TRABAJO, extraer_caracteristicas, redimensionar_para_trabajo
-from .modelo import ModeloMadurezPixel
+from src.infrastructure.ml.features import CLASES, LADO_TRABAJO, extraer_caracteristicas, redimensionar_para_trabajo
+from src.infrastructure.ml.modelo import ModeloMadurezPixel
 from .synthetic_data import frutos_visibles, generar_escena
 
-RUTA_MODELO_POR_DEFECTO = Path(__file__).resolve().parents[3] / "models" / "madurez_pixel.joblib"
+RUTA_MODELO_POR_DEFECTO = Path(__file__).resolve().parents[2] / "models" / "madurez_pixel.joblib"
 
 _SEMILLA_VALIDACION = 1_000
 _SEMILLA_PRUEBA = 2_000
@@ -137,7 +141,7 @@ def evaluar(
     escenas sinteticas NUEVAS (semilla distinta a la de entrenamiento).
     Es una medida optimista: las escenas salen del mismo generador que el entrenamiento.
     """
-    from ..adapters.detectors.ml_detector_adapter import MLFruitDetectorAdapter
+    from src.infrastructure.adapters.detectors.ml_detector_adapter import MLFruitDetectorAdapter
 
     detector = MLFruitDetectorAdapter(modelo)
     rng = np.random.default_rng(semilla)

@@ -6,8 +6,9 @@ from src.domain.exceptions.domain_exceptions import ModeloNoDisponibleException
 from src.infrastructure.adapters.detectors.ml_detector_adapter import MLFruitDetectorAdapter
 from src.infrastructure.composition import RUTA_MODELO_POR_DEFECTO, construir_detector
 from src.infrastructure.ml.modelo import ModeloMadurezPixel
-from src.infrastructure.ml.synthetic_data import generar_escena
-from src.infrastructure.ml.training import evaluar
+
+from ml.sintetico.synthetic_data import generar_escena
+from ml.sintetico.training import evaluar
 
 
 @pytest.fixture(scope="module")
@@ -67,7 +68,7 @@ def test_modelo_inexistente_o_corrupto(tmp_path):
     with pytest.raises(ModeloNoDisponibleException):
         ModeloMadurezPixel.cargar(malo)
     with pytest.raises(ModeloNoDisponibleException):
-        construir_detector("ml", ruta_modelo=malo, auto_entrenar=False)
+        construir_detector("sintetico", ruta_modelo=malo)
 
 
 def test_detector_desconocido():

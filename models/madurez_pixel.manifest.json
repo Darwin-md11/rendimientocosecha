@@ -1,0 +1,13 @@
+{
+  "archivo": "madurez_pixel.joblib",
+  "sha256": "c1a18fa9ebfd249bdd57839aeee66313372703feffa81a59c8f6df1cbbd0cc14",
+  "version_sklearn": "1.9.1",
+  "version_caracteristicas": 2,
+  "familia": "SINTETICO",
+  "datos_entrenamiento": "600 escenas sintéticas, 0 imágenes reales",
+  "validado_con_datos_reales": false,
+  "semilla": 0,
+  "fecha_entrenamiento": null,
+  "nota": "Archivo versionado en git hasta el commit b3456b6 (2026-11-09); fecha exacta de entrenamiento no registrada.",
+  "url_descarga": "https://github.com/Darwin-md11/rendimientocosecha/releases/download/modelo-sintetico-v1/madurez_pixel.joblib"
+}
