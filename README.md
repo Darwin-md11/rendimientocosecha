@@ -2,13 +2,25 @@
 
 Sistema que estima el rendimiento de cosecha (kg de café cereza) a partir de una fotografía del cafeto:
 detecta las cerezas, clasifica su estado de madurez y escala el resultado al lote.
-Arquitectura Hexagonal (puertos y adaptadores).
+Arquitectura hexagonal (puertos y adaptadores). Metodología CRISP-DM.
+
+> ⚠️ **Estado actual:** el único modelo incluido se entrenó **solo con escenas sintéticas** y está etiquetado
+> **"SINTÉTICO – NO VALIDADO"**. En fotos sin café detecta de 19 a 32 "cerezas"
+> ([diagnóstico](docs/resultados/diagnostico-sintetico.md)). La UI y la CLI lo advierten en cada resultado.
+> Los modelos con datos reales (M0, M1, M2) están en desarrollo: ver [docs/PROGRESO.md](docs/PROGRESO.md).
 
 ## Instalación
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt          # app
+pip install -r requirements-dev.txt      # + pruebas y lint
+python scripts/descargar_modelo.py       # pesos desde la Release, con verificación SHA-256
 ```
+
+Los pesos no se guardan en git ([ADR-004](docs/decisiones/ADR-004-politica-pesos-y-datos.md)): cada modelo tiene un
+manifiesto versionado (`models/*.manifest.json`) con su SHA-256 y la versión de scikit-learn con la que se guardó.
+La app **no arranca** (con un mensaje que explica cómo resolverlo) si falta el archivo, el hash no coincide o la
+versión de scikit-learn instalada es otra. Nunca reentrena ni cambia de detector en silencio.
 
 ## Uso
 
@@ -20,69 +32,57 @@ python -m src.infrastructure.adapters.ui.cli_app --imagen foto.jpg --guardar-ano
 # Interfaz web (Gradio)
 python -m src.infrastructure.adapters.ui.gradio_app
 
-# Pruebas
+# Pruebas y lint
 python -m pytest
+ruff check .
 ```
 
-Por defecto se usa el detector con machine learning. `SIKAFE_DETECTOR=mock` (o `--detector mock` en la CLI)
-activa el detector simulado, que genera cajas aleatorias y solo sirve para probar la arquitectura.
+Selección de detector con `SIKAFE_DETECTOR` (o `--detector` en la CLI):
 
-## Cómo funciona el detector con ML
+| Valor | Detector | Procedencia |
+|---|---|---|
+| `sintetico` (por defecto; alias `ml`) | clasificador de píxeles + watershed | SINTÉTICO – NO VALIDADO |
+| `mock` | cajas aleatorias, ignora la imagen | SIMULADO – NO VALIDADO |
+
+Cada resultado incluye la **procedencia del modelo** (nombre, familia, versión, datos de entrenamiento,
+si fue validado con datos reales, SHA-256 de los pesos) y sus advertencias.
+
+## Cómo funciona el detector sintético
 
 `MLFruitDetectorAdapter` (implementa `FruitDetectorPort`):
 
 1. Reduce la imagen a un lado mayor de 320 px.
-2. Un clasificador de píxeles (`HistGradientBoostingClassifier` de scikit-learn) asigna a cada píxel una clase:
-   fondo, verde, pintón, maduro o sobremaduro. Usa color (RGB/HSV/croma), contexto a varias escalas, textura y bordes.
+2. Un clasificador de píxeles (`HistGradientBoostingClassifier`) asigna a cada píxel: fondo, verde, pintón, maduro o sobremaduro.
 3. Limpia la máscara y separa cerezas que se tocan con *watershed* sobre la transformada de distancia.
 4. Descarta regiones pequeñas, alargadas o irregulares (hojas) y las de baja confianza.
 5. Cada región es una detección: estado = clase con mayor probabilidad media, confianza = esa probabilidad.
 
-El cálculo de rendimiento (`CalculadoraRendimientoService`) no cambió.
+Sobre 80 escenas sintéticas nuevas obtuvo precisión 0,88 y recall 0,76. Es una medida **optimista**: la prueba
+sale del mismo generador que el entrenamiento. Con perturbaciones leves (brillo, desenfoque, compresión) el error
+de conteo llega a ~100 %. **No hay medición con fotos reales.**
 
-## Calidad medida (¡leer antes de confiar en los números!)
-
-El modelo incluido en `models/madurez_pixel.joblib` se entrenó **solo con escenas sintéticas**
-(`src/infrastructure/ml/synthetic_data.py`), porque el repositorio no tiene fotos reales etiquetadas.
-Resultados sobre 80 escenas sintéticas nuevas (`python -m src.infrastructure.ml.training`):
-
-| Métrica | Valor |
-|---|---|
-| Exactitud por píxel | 0.97 |
-| Precisión de detección | 0.88 |
-| Recall de detección | 0.76 |
-| Estado correcto en frutos detectados | 0.96 |
-| Error relativo de conteo por escena | 0.20 |
-
-Estas cifras son **optimistas**: el conjunto de evaluación sale del mismo generador que el de entrenamiento.
-Con fotos reales de campo (otra luz, otras variedades, frutos muy ocultos) el desempeño será menor y
-**no está medido**. Los filtros de forma y tamaño del detector se calibraron con escenas sintéticas de validación.
-
-## Reentrenar con fotos reales (recomendado)
-
-Cree una carpeta donde cada foto `lote1.jpg` tenga su máscara `lote1_mask.png`, una imagen de un canal
-donde cada píxel vale `0`=fondo, `1`=verde, `2`=pintón, `3`=maduro, `4`=sobremaduro. Luego:
+Reentrenarlo (laboratorio, no forma parte de la app):
 
 ```bash
-python -m src.infrastructure.ml.training --imagenes datos/ --salida models/madurez_pixel.joblib
-# con suficientes fotos reales, también se puede entrenar solo con ellas:
-python -m src.infrastructure.ml.training --imagenes datos/ --sin-sinteticas
+python -m ml.sintetico.training                       # escribe el .joblib y su manifiesto
+python -m ml.sintetico.training --imagenes datos/     # + fotos con máscara foto_mask.png (0..4 por píxel)
+python ml/diagnosticos/diagnostico_detector_ml.py     # robustez y falsos positivos
 ```
-
-Si el modelo guardado no existe o fue creado con otra versión de scikit-learn, el sistema entrena uno nuevo
-con datos sintéticos automáticamente (~30 s) la primera vez que se usa.
 
 ## Estructura
 
 ```
-src/
-  domain/          modelos, puertos (FruitDetectorPort), servicio de rendimiento, excepciones
-  application/     caso de uso AnalizarImagenCosechaUseCase y DTOs
+src/                      LA APP (dependencias livianas)
+  domain/                 modelos (incl. ModeloInfo), puertos, servicio de rendimiento, excepciones
+  application/            caso de uso AnalizarImagenCosechaUseCase y DTOs
   infrastructure/
-    adapters/detectors/   MLFruitDetectorAdapter, MockFruitDetectorAdapter
-    adapters/ui/          CLI y Gradio
-    ml/                   características, datos sintéticos, modelo, entrenamiento/evaluación
-    composition.py        elige qué detector se inyecta
-models/            modelo entrenado (.joblib)
-tests/             pruebas con pytest
+    adapters/detectors/   sintético (MLFruitDetectorAdapter), mock
+    adapters/ui/          CLI, Gradio y textos de presentación
+    ml/                   características y carga verificada del modelo
+    composition.py        único lugar que decide qué detector se inyecta
+ml/                       EL LABORATORIO (entrenamiento, datos, diagnósticos; Colab/Kaggle)
+models/                   manifiestos de los modelos (los pesos se descargan)
+scripts/                  descarga de pesos con verificación
+docs/                     PROGRESO.md, decisiones (ADR), resultados
+tests/                    pruebas (incl. suite de contrato para detectores)
 ```
