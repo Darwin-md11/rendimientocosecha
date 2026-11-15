@@ -26,6 +26,7 @@ from sklearn.ensemble import HistGradientBoostingClassifier
 
 from src.infrastructure.ml.features import CLASES, LADO_TRABAJO, extraer_caracteristicas, redimensionar_para_trabajo
 from src.infrastructure.ml.modelo import ModeloMadurezPixel
+
 from .synthetic_data import frutos_visibles, generar_escena
 
 RUTA_MODELO_POR_DEFECTO = Path(__file__).resolve().parents[2] / "models" / "madurez_pixel.joblib"

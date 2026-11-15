@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 
 import pytest
+from contrato_detector import verificar_contrato
 from PIL import Image
 
 from src.application.dtos.estimate_dto import SolicitudEstimacionDTO
@@ -20,8 +21,6 @@ from src.infrastructure.adapters.detectors.mock_detector_adapter import MockFrui
 from src.infrastructure.adapters.ui import presentacion
 from src.infrastructure.adapters.ui.cli_app import IMAGEN_DEMO, run_cli
 from src.infrastructure.composition import construir_detector
-
-from contrato_detector import verificar_contrato
 
 RAIZ = Path(__file__).resolve().parents[1]
 

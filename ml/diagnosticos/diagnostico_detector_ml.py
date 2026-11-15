@@ -26,12 +26,12 @@ import numpy as np
 from PIL import Image, ImageEnhance, ImageFilter
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # raíz del repositorio
+from ml.sintetico.synthetic_data import frutos_visibles, generar_escena  # noqa: E402
+from ml.sintetico.training import _SEMILLA_PRUEBA, _iou  # noqa: E402
 from src.infrastructure.adapters.detectors.ml_detector_adapter import MLFruitDetectorAdapter  # noqa: E402
 from src.infrastructure.composition import RUTA_MODELO_POR_DEFECTO  # noqa: E402
 from src.infrastructure.ml.features import CLASES  # noqa: E402
 from src.infrastructure.ml.modelo import ModeloMadurezPixel  # noqa: E402
-from ml.sintetico.synthetic_data import frutos_visibles, generar_escena  # noqa: E402
-from ml.sintetico.training import _SEMILLA_PRUEBA, _iou  # noqa: E402
 
 UMBRAL, IOU_MIN = 0.40, 0.30  # los mismos valores que usa training.evaluar
 

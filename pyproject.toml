@@ -1,0 +1,21 @@
+[project]
+name = "sikafe"
+version = "0.1.0"
+description = "Detección, conteo y clasificación por madurez de cerezas de café para estimar el rendimiento de cosecha"
+requires-python = ">=3.10"
+
+[tool.ruff]
+line-length = 130
+target-version = "py310"
+extend-exclude = [".venv", "venv"]
+
+[tool.ruff.lint]
+# Errores reales (pyflakes, pycodestyle) e imports ordenados. Se puede endurecer más adelante.
+select = ["E", "F", "W", "I"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src", "ml"]
+
+[tool.ruff.lint.per-file-ignores]
+# gradio_app ajusta sys.path antes de importar (permite ejecutarlo como script); tabla de madurez en líneas largas.
+"src/infrastructure/adapters/ui/gradio_app.py" = ["E402", "E501"]

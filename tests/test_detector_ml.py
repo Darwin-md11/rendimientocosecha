@@ -2,13 +2,12 @@ import numpy as np
 import pytest
 from PIL import Image
 
+from ml.sintetico.synthetic_data import generar_escena
+from ml.sintetico.training import evaluar
 from src.domain.exceptions.domain_exceptions import ModeloNoDisponibleException
 from src.infrastructure.adapters.detectors.ml_detector_adapter import MLFruitDetectorAdapter
 from src.infrastructure.composition import RUTA_MODELO_POR_DEFECTO, construir_detector
 from src.infrastructure.ml.modelo import ModeloMadurezPixel
-
-from ml.sintetico.synthetic_data import generar_escena
-from ml.sintetico.training import evaluar
 
 
 @pytest.fixture(scope="module")

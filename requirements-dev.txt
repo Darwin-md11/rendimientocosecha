@@ -1,0 +1,4 @@
+# Desarrollo y CI: pruebas y lint.
+-r requirements.txt
+pytest>=7.0.0
+ruff>=0.6.0

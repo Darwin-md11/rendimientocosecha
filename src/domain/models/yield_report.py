@@ -3,8 +3,10 @@ Domain Entity: ReporteRendimiento
 """
 from dataclasses import dataclass
 from typing import Dict, List
-from .coffee_cherry import DeteccionFruto, EstadoMadurez
+
 from .agronomic_params import ParametrosAgronomicos
+from .coffee_cherry import DeteccionFruto, EstadoMadurez
+
 
 @dataclass(frozen=True)
 class ReporteRendimiento:

@@ -1,8 +1,9 @@
 """
 Domain Model: EstadoMadurez, BoundingBox, DeteccionFruto
 """
-from enum import Enum
 from dataclasses import dataclass
+from enum import Enum
+
 
 class EstadoMadurez(str, Enum):
     VERDE = "VERDE"

@@ -2,9 +2,11 @@
 Domain Service: CalculadoraRendimientoService (RB-002)
 """
 from typing import List
-from ..models.coffee_cherry import DeteccionFruto, EstadoMadurez
+
 from ..models.agronomic_params import ParametrosAgronomicos
+from ..models.coffee_cherry import DeteccionFruto, EstadoMadurez
 from ..models.yield_report import ReporteRendimiento
+
 
 class CalculadoraRendimientoService:
     @staticmethod
@@ -13,7 +15,7 @@ class CalculadoraRendimientoService:
         conteo = {estado: 0 for estado in EstadoMadurez}
         for det in detecciones:
             conteo[det.estado] = conteo.get(det.estado, 0) + 1
-            
+
         if total_frutos == 0:
             rendimiento_kg = 0.0
         else:
@@ -24,7 +26,7 @@ class CalculadoraRendimientoService:
                 parametros.peso_medio_fruto_kg *
                 factor_escalado
             )
-            
+
         return ReporteRendimiento(
             total_frutos=total_frutos,
             conteo_por_estado=conteo,
