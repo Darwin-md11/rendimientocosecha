@@ -25,6 +25,7 @@ import re
 import shutil
 import statistics
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -55,7 +56,8 @@ class Muestra:
     imagen: Path
     etiqueta: Optional[Path]
     split_origen: str
-    grupo: str = ""
+    grupo: str = ""  # unidad de partición: sesión de captura o, si no aplica, foto original
+    foto: str = ""  # foto original de la que sale el recorte
     cajas: List[Tuple[int, float, float, float, float]] = field(default_factory=list)  # clase SIKAFE, cx, cy, w, h
     excluidas: List[Tuple[str, float, float, float, float]] = field(default_factory=list)
     sha256: str = ""
@@ -145,6 +147,70 @@ def elegir_patron(nombres: List[str], patron: str = PATRON_AUTO) -> Tuple[str, s
         f"Ningún patrón de agrupamiento es plausible: {diagnostico}. Revise los nombres con --inspeccionar y pase "
         "--regex-grupo, o use --usar-split-original (y declare la limitación)."
     )
+
+
+# ------------------------------------------------------------------ sesiones de captura
+# Si el nombre de la foto empieza con su marca de tiempo (p. ej. Croppie: 1687438155343c0.jpg = milisegundos
+# Unix + índice de recorte), las fotos se agrupan en SESIONES: una sesión nueva empieza cuando pasan más de
+# N minutos sin fotos. Partir por sesión evita que fotos del mismo árbol tomadas seguidas caigan en train y test.
+SESION_AUTO = "auto"
+SIN_SESIONES = "no"
+UMBRALES_SESION_MIN = (240, 120, 60, 30, 15, 5, 1)  # en modo auto se prueba del más conservador al menos
+_PATRON_TS = re.compile(r"^(\d{13}|\d{10})(?!\d)")
+
+
+def marca_tiempo_s(clave_foto: str) -> Optional[float]:
+    m = _PATRON_TS.match(clave_foto)
+    if not m:
+        return None
+    v = int(m.group(1))
+    return v / 1000 if len(m.group(1)) == 13 else float(v)
+
+
+def sesiones(fotos: List[str], minutos: float) -> Dict[str, str]:
+    """{foto: id_sesion}. Todas las fotos deben tener marca de tiempo."""
+    orden = sorted((marca_tiempo_s(f), f) for f in set(fotos))
+    mapa, n, previo, inicio = {}, 0, None, None
+    for t, f in orden:
+        if previo is None or t - previo > minutos * 60:
+            n += 1
+            inicio = datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y%m%d-%H%M")
+        mapa[f] = f"sesion_{n:04d}_{inicio}"
+        previo = t
+    return mapa
+
+
+def _resumen_sesiones(imagenes_por_foto: Dict[str, int], minutos: float) -> Tuple[dict, Dict[str, str]]:
+    mapa = sesiones(list(imagenes_por_foto), minutos)
+    por_sesion = collections.Counter()
+    for f, n in imagenes_por_foto.items():
+        por_sesion[mapa[f]] += n
+    total = sum(imagenes_por_foto.values())
+    mayor = max(por_sesion.values())
+    return {"sesiones": len(por_sesion), "mayor_sesion_imagenes": mayor, "mayor_sesion_pct": round(100 * mayor / total, 1)}, mapa
+
+
+def _sesion_plausible(r: dict) -> bool:
+    # >= 20 sesiones y ninguna con más del 10 % de las imágenes: así val y test (15 % c/u) reúnen varias sesiones.
+    return r["sesiones"] >= 20 and r["mayor_sesion_pct"] <= 10.0
+
+
+def elegir_sesiones(imagenes_por_foto: Dict[str, int], sesion_minutos=SESION_AUTO):
+    """Devuelve (minutos_elegidos | None, diagnóstico, mapa foto->sesión | None)."""
+    if str(sesion_minutos) == SIN_SESIONES:
+        return None, {"motivo": "agrupamiento por sesión desactivado"}, None
+    if any(marca_tiempo_s(f) is None for f in imagenes_por_foto):
+        return None, {"motivo": "los nombres de las fotos no empiezan con una marca de tiempo"}, None
+    candidatos = UMBRALES_SESION_MIN if str(sesion_minutos) == SESION_AUTO else (float(sesion_minutos),)
+    diagnostico = {}
+    for minutos in candidatos:
+        r, mapa = _resumen_sesiones(imagenes_por_foto, minutos)
+        diagnostico[f"{minutos:g} min"] = r
+        if _sesion_plausible(r):
+            return minutos, diagnostico, mapa
+    if str(sesion_minutos) != SESION_AUTO:
+        raise ErrorPreparacion(f"Con {sesion_minutos} min las sesiones no son plausibles: {diagnostico}. Use un umbral menor o 'auto'.")
+    return None, diagnostico, None
 
 
 # ------------------------------------------------------------------ etiquetas
@@ -242,6 +308,7 @@ def preparar(
     usar_split_original: bool = False,
     enmascarar_excluidas: bool = True,
     ruta_config: Path = CONFIG_CLASES,
+    sesion_minutos=SESION_AUTO,
 ) -> dict:
     clases, origen_clases, mapeo, meta = cargar_mapeo(dataset, ruta_config)
     muestras = descubrir(origen)
@@ -253,12 +320,23 @@ def preparar(
     usados = set()
     for m in muestras:
         leer_etiquetas(m, origen_clases, mapeo)
-        m.grupo = clave_grupo(m.imagen.name, regex) if regex else m.imagen.stem
+        m.foto = clave_grupo(m.imagen.name, regex) if regex else m.imagen.stem
+        m.grupo = m.foto
         m.sha256 = _sha256(m.imagen)
         nombre = m.imagen.name if m.imagen.name not in usados else f"{m.split_origen}_{m.imagen.name}"
         usados.add(nombre)
         m.nombre_destino = nombre
 
+    minutos_sesion, diagnostico_sesiones = None, {}
+    if not usar_split_original:
+        imagenes_por_foto = collections.Counter(m.foto for m in muestras)
+        minutos_sesion, diagnostico_sesiones, mapa_sesion = elegir_sesiones(imagenes_por_foto, sesion_minutos)
+        if mapa_sesion:
+            for m in muestras:
+                m.grupo = mapa_sesion[m.foto]
+        elif str(sesion_minutos) == SESION_AUTO and "motivo" not in diagnostico_sesiones:
+            print(f"AVISO: ninguna agrupación por sesión fue plausible ({diagnostico_sesiones}); se agrupa por foto original.")
+    n_fotos = len({m.foto for m in muestras})
     n_grupos = len({m.grupo for m in muestras})
     if usar_split_original:
         if any(m.split_origen == "sin_split" for m in muestras):
@@ -268,7 +346,11 @@ def preparar(
     else:
         asignacion = particionar(muestras, semilla)
         split_de = {m.nombre_destino: asignacion[m.grupo] for m in muestras}
-        estrategia = f"70/15/15 por grupo (foto original; patrón {nombre_patron}: {diagnostico[nombre_patron]}), semilla {semilla}"
+        if minutos_sesion is not None:
+            unidad = f"sesión de captura (fotos separadas por más de {minutos_sesion:g} min; {n_grupos} sesiones con {n_fotos} fotos)"
+        else:
+            unidad = f"foto original ({n_fotos} fotos)"
+        estrategia = f"70/15/15 por {unidad}; recortes agrupados con el patrón {nombre_patron}; semilla {semilla}"
     fuga = verificar_fuga(muestras, split_de)
 
     if destino.exists():
@@ -301,6 +383,7 @@ def preparar(
                 "origen": str(m.imagen.relative_to(origen)),
                 "split": split_de[m.nombre_destino],
                 "grupo": m.grupo,
+                "foto": m.foto,
                 "sha256": m.sha256,
                 "cajas": len(m.cajas),
                 "excluidas": len(m.excluidas),
@@ -320,6 +403,12 @@ def preparar(
         "estrategia_particion": estrategia,
         "semilla": semilla,
         "patron_grupo": {"nombre": nombre_patron, "regex": regex, "diagnostico": diagnostico},
+        "agrupamiento": {
+            "nivel": "sesion" if minutos_sesion is not None else "foto",
+            "sesion_minutos": minutos_sesion,
+            "fotos": n_fotos,
+            "diagnostico_sesiones": diagnostico_sesiones,
+        },
         "grupos": n_grupos,
         "imagenes": len(muestras),
         "imagenes_sin_etiqueta": sin_etiqueta,
@@ -438,6 +527,20 @@ def inspeccionar(origen: Path, patron_grupo: str = PATRON_AUTO, n: int = 15) -> 
     for m in muestras:
         grupos[clave_grupo(m.imagen.name, regex)].append(m)
     mezclados = sum(1 for ms in grupos.values() if len({m.split_origen for m in ms}) > 1)
+    imagenes_por_foto = {g: len(ms) for g, ms in grupos.items()}
+    if all(marca_tiempo_s(f) is not None for f in imagenes_por_foto):
+        tiempos = sorted(marca_tiempo_s(f) for f in imagenes_por_foto)
+        dias = sorted({datetime.fromtimestamp(t, tz=timezone.utc).date().isoformat() for t in tiempos})
+        por_umbral = {f"{u:g} min": _resumen_sesiones(imagenes_por_foto, u)[0] for u in UMBRALES_SESION_MIN}
+        elegido = elegir_sesiones(imagenes_por_foto, SESION_AUTO)[0]
+        sesiones_info = {
+            "rango_fechas_utc": [dias[0], dias[-1]],
+            "dias_distintos": len(dias),
+            "por_umbral": por_umbral,
+            "umbral_auto_elegido_min": elegido,
+        }
+    else:
+        sesiones_info = {"motivo": "los nombres de las fotos no empiezan con una marca de tiempo"}
     clases = collections.Counter()
     for m in muestras:
         if m.etiqueta:
@@ -450,6 +553,7 @@ def inspeccionar(origen: Path, patron_grupo: str = PATRON_AUTO, n: int = 15) -> 
         "diagnostico_patrones": diagnostico,
         "grupos_con_patron": len(grupos),
         "grupos_en_varios_splits_originales": mezclados,
+        "sesiones_de_captura": sesiones_info,
         "cajas_por_clase_origen": dict(sorted(clases.items())),
         "ejemplos": [
             f"{m.imagen.relative_to(origen)} -> grupo {clave_grupo(m.imagen.name, regex)!r}" for m in muestras[:: max(1, len(muestras) // n)][:n]
@@ -468,6 +572,7 @@ def main(argv=None) -> int:
     p.add_argument("--usar-split-original", action="store_true", help="respetar train/val del dataset (sin reagrupar)")
     p.add_argument("--no-enmascarar", action="store_true", help="solo borrar las cajas excluidas, sin taparlas en la imagen")
     p.add_argument("--inspeccionar", action="store_true", help="solo mostrar estructura, nombres y agrupamiento")
+    p.add_argument("--sesion-minutos", default=SESION_AUTO, help="agrupar fotos en sesiones de captura: 'auto' (def.), minutos, o 'no'")
     a = p.parse_args(argv)
     try:
         if a.inspeccionar:
@@ -475,7 +580,9 @@ def main(argv=None) -> int:
             return 0
         if not a.destino:
             p.error("--destino es obligatorio (salvo con --inspeccionar)")
-        preparar(a.origen, a.destino, a.dataset, a.semilla, a.regex_grupo, a.usar_split_original, not a.no_enmascarar)
+        preparar(
+            a.origen, a.destino, a.dataset, a.semilla, a.regex_grupo, a.usar_split_original, not a.no_enmascarar, sesion_minutos=a.sesion_minutos
+        )
     except ErrorPreparacion as e:
         print(f"ERROR: {e}")
         return 2

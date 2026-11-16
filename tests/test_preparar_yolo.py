@@ -135,3 +135,68 @@ def test_inspeccionar(croppie_juguete):
     info = py.inspeccionar(croppie_juguete)
     assert info["imagenes"] == N_FOTOS * 5 and info["patron_elegido"] == "fila_columna"
     assert info["grupos_en_varios_splits_originales"] == 0 and info["cajas_por_clase_origen"]["2"] == N_FOTOS * 5
+
+
+# ------------------------------------------------------------------ sesiones de captura (nombres tipo Croppie)
+def _croppie_con_marcas_de_tiempo(raiz, n_sesiones, fotos_por_sesion=2, recortes=3, horas_entre_sesiones=3):
+    """Nombres '<ms>c<i>.jpg'; fotos de una sesión separadas 30 s; recortes mezclados entre train y val (como Croppie)."""
+    t0 = 1_687_438_155_343
+    semilla = 0
+    for s in range(n_sesiones):
+        for f in range(fotos_por_sesion):
+            ms = t0 + s * horas_entre_sesiones * 3_600_000 + f * 30_000
+            for r in range(recortes):
+                split = "train" if (s + f + r) % 2 == 0 else "val"
+                semilla += 1
+                _img(raiz / split / "images" / f"{ms}c{r}.jpg", semilla)
+                _lbl(raiz / split / "labels" / f"{ms}c{r}.txt", [(CROPPIE_IDS["red_cherry"], 0.5, 0.5, 0.1, 0.1)])
+    return raiz
+
+
+def test_marca_de_tiempo_en_el_nombre():
+    assert py.marca_tiempo_s("1687438155343c") == pytest.approx(1687438155.343)
+    assert py.marca_tiempo_s("1687438155c") == 1687438155.0
+    assert py.marca_tiempo_s("IMG_1234") is None and py.marca_tiempo_s("16874381553431c") is None
+
+
+def test_sesiones_por_hueco_de_tiempo():
+    fotos = ["1000000000000c", "1000000030000c", "1000007200000c"]  # 0 s, 30 s, 2 h
+    mapa = py.sesiones(fotos, minutos=60)
+    assert mapa[fotos[0]] == mapa[fotos[1]] != mapa[fotos[2]]
+    assert len(set(py.sesiones(fotos, minutos=240).values())) == 1
+
+
+def test_inspeccion_y_preparacion_por_sesion(tmp_path):
+    raiz = _croppie_con_marcas_de_tiempo(tmp_path / "raw", n_sesiones=30)
+    info = py.inspeccionar(raiz)
+    assert info["patron_elegido"] == "indice" and info["grupos_en_varios_splits_originales"] > 0
+    ses = info["sesiones_de_captura"]
+    assert ses["por_umbral"]["240 min"]["sesiones"] == 1  # sesiones cada 3 h: con 4 h se unen todas
+    assert ses["umbral_auto_elegido_min"] == 120 and ses["por_umbral"]["120 min"]["sesiones"] == 30
+
+    r = py.preparar(raiz, tmp_path / "out", "croppie", semilla=0)
+    assert r["agrupamiento"] == {**r["agrupamiento"], "nivel": "sesion", "sesion_minutos": 120, "fotos": 60}
+    assert r["grupos"] == 30 and "sesión de captura" in r["estrategia_particion"]
+    man = json.loads((tmp_path / "out" / "manifiesto.json").read_text(encoding="utf-8"))
+    split_de_sesion, sesion_de_foto = {}, {}
+    for a in man["archivos"]:
+        assert split_de_sesion.setdefault(a["grupo"], a["split"]) == a["split"], "una sesión en dos particiones"
+        assert sesion_de_foto.setdefault(a["foto"], a["grupo"]) == a["grupo"], "una foto en dos sesiones"
+    assert {a["split"] for a in man["archivos"]} == {"train", "val", "test"}
+
+
+def test_sesiones_desactivadas_umbral_invalido_y_respaldo(tmp_path):
+    raiz = _croppie_con_marcas_de_tiempo(tmp_path / "raw", n_sesiones=30)
+    r = py.preparar(raiz, tmp_path / "o1", "croppie", sesion_minutos="no")
+    assert r["agrupamiento"]["nivel"] == "foto" and r["grupos"] == 60
+    with pytest.raises(py.ErrorPreparacion, match="no son plausibles"):
+        py.preparar(raiz, tmp_path / "o2", "croppie", sesion_minutos="240")
+
+    pocas = _croppie_con_marcas_de_tiempo(tmp_path / "raw2", n_sesiones=10)  # 10 sesiones < 20: se agrupa por foto, con aviso
+    r = py.preparar(pocas, tmp_path / "o3", "croppie")
+    assert r["agrupamiento"]["nivel"] == "foto" and r["agrupamiento"]["diagnostico_sesiones"]["1 min"]["sesiones"] == 10
+
+
+def test_nombres_sin_marca_de_tiempo_agrupan_por_foto(croppie_juguete, tmp_path):
+    r = py.preparar(croppie_juguete, tmp_path / "out", "croppie")
+    assert r["agrupamiento"]["nivel"] == "foto" and "marca de tiempo" in r["agrupamiento"]["diagnostico_sesiones"]["motivo"]
