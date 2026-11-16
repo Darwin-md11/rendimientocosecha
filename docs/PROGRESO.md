@@ -8,10 +8,11 @@
 | Fase | Estado | Rama |
 |---|---|---|
 | 0 — Línea base, honestidad y orden del repo | ✔ código y pruebas listos; **pendiente:** Release del modelo y *push* | `fase-0-honestidad` |
-| 1 — Módulo de rendimiento (versión mínima) | siguiente | — |
-| 2 — Datos | bloqueada: elegir dataset (equipo) | — |
-| 3 — Modelos M0/M1/M2 | bloqueada por la Fase 2 y por GPU en Colab | — |
-| 4 — Evaluación | bloqueada por la Fase 3 | — |
+| 1 — Módulo de rendimiento (versión mínima) | pendiente (después de M2) | — |
+| 2 — Datos (Croppie) | ✔ script de preparación listo; **pendiente:** ejecutarlo en Colab | `fase-2-3-croppie-yolo` |
+| 3 — M2 YOLO | ✔ entrenamiento, evaluación, adaptador y notebook listos; **pendiente:** entrenar en Colab (equipo) | `fase-2-3-croppie-yolo` |
+| 3 — M0 / M1 | pendientes (recortes de las cajas de Croppie) | — |
+| 4 — Evaluación | ✔ métricas comunes listas; tablas de M2 se generan al evaluar | `fase-2-3-croppie-yolo` |
 | 5–6 — Prototipo final y cierre | — | — |
 
 ## Plan ajustado a 5 días (propuesto 2026-11-15, falta confirmación del equipo)
@@ -35,13 +36,18 @@
 | 2026-11-15 | Pesos fuera de git, Release + manifiesto SHA-256 + versión de scikit-learn; fallo claro si no coincide (sin reentreno automático) | ADR-004 |
 | 2026-11-15 | Se mantiene Gradio | ADR-006 |
 | 2026-11-15 | `src/` (app) separado de `ml/` (laboratorio) | ADR-005 |
+| 2026-11-15 | Dataset para M2: Croppie (CC BY-SA 4.0); partición 70/15/15 por foto original; low_visibility excluida y enmascarada | docs/datasets.md |
+| 2026-11-15 | Métricas comunes propias (COCO 101 puntos) como cifra principal; mAP de Ultralytics como referencia | ADR-007 (propuesta) |
+| 2026-11-15 | Procedencia en tres niveles: no validado / validado en otro dominio / validado en la región | ADR-008 |
 
 ## Pendientes / preguntas abiertas
 
 - [ ] **Unidad de muestreo** (qué cubre una foto: rama, lado de planta, planta): sin definir. Bloquea la cadena de rendimiento completa de la Fase 1.
 - [ ] **Estimación con varias fotos**: sin definir (requiere visto bueno del docente). Mientras tanto, una imagen a la vez.
 - [ ] Documento fuente de los factores agronómicos (Cenicafé/FNC): peso por fruto, frutos por rama, ramas por planta, densidad, factor cereza→pergamino.
-- [ ] Dataset abierto elegido + licencia verificada. Candidatos encontrados (sin verificar): Croppie (Hugging Face), Roboflow `carlosmm/coffee_cherry`, Sanya et al. (Mendeley, dron).
+- [ ] **Confirmar mapeo amarilla → PINTÓN** (Croppie `yellow_cherry`).
+- [ ] Ejecutar `ml/notebooks/m2_yolo_colab.ipynb` en Colab y pegar las salidas 📋.
+- [ ] Fotos propias con conteo manual (15–20) para la evaluación en la región y el R² frente a conteo manual.
 - [ ] PDF del artículo de revisión sistemática (no se recibió).
 - [ ] Inconsistencias del documento base: §7.2 dice "cuatro etapas" pero la tabla tiene seis fases; ref. [7] con "⚠ COMPLETAR"; cifra de pérdidas >30 % sin fuente.
 
@@ -56,3 +62,12 @@
 - 0.5 Entrenamiento y generador sintético movidos a `ml/sintetico/`; la app ya no los importa.
 - 0.6 ADR-001 a ADR-006, README actualizado.
 - **Bloqueo:** sin permiso de *push* desde la sesión de desarrollo → los cambios se entregan como parches (`git am`). Antes de fusionar: publicar la Release `modelo-sintetico-v1` (ADR-004).
+
+### 2026-11-15 (noche) — Fases 2–4 para M2 (rama `fase-2-3-croppie-yolo`, sale de `fase-0-honestidad`)
+
+- Dataset elegido: Croppie (ficha: CC BY-SA 4.0, 633 fotos originales, ~61 050 cajas, formato YOLO). `configs/clases.yaml` con el mapeo.
+- `ml/datos/preparar_yolo.py`: mapeo, enmascarado de excluidas, agrupamiento de recortes por foto original con chequeo de plausibilidad, partición 70/15/15 por grupo, prueba de fuga, data.yaml, manifiesto con hashes, EDA (tabla y gráfico).
+- `src/evaluation/metricas.py`: métricas comunes probadas a mano.
+- `YoloFruitDetectorAdapter` + composición (`SIKAFE_DETECTOR=yolo`, por defecto si existe su manifiesto).
+- `ml/m2_yolo/entrenar.py` y `evaluar.py` (test una sola vez con `--final`), configs 640/960, `ml/notebooks/m2_yolo_colab.ipynb`.
+- **No ejecutado con Ultralytics real** (sin GPU/PyTorch en el entorno de desarrollo): probado con un modelo simulado. Las cifras reales saldrán del notebook.

@@ -7,7 +7,7 @@ requires-python = ">=3.10"
 [tool.ruff]
 line-length = 150
 target-version = "py310"
-extend-exclude = [".venv", "venv"]
+extend-exclude = [".venv", "venv", "*.ipynb"]
 
 [tool.ruff.lint]
 # Errores reales (pyflakes, pycodestyle) e imports ordenados. Se puede endurecer más adelante.
