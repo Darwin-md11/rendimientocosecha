@@ -11,6 +11,6 @@ models/*.joblib
 models/*.pt
 models/*.onnx
 *.parcial
-datos/
-data/raw/
-runs/
+/datos/
+/data/raw/
+/runs/

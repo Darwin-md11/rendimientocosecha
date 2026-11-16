@@ -1,0 +1,18 @@
+# Clases de SIKAFE y mapeo desde cada dataset externo.
+# Regla: lo que no se puede mapear con criterio documentado se EXCLUYE y se reporta (no se adivina).
+clases_sikafe: [VERDE, PINTON, MADURO, SOBREMADURO]   # índice YOLO = posición en esta lista
+
+datasets:
+  croppie:
+    descripcion: "Croppie coffee dataset (Hugging Face rgautroncgiar/croppie_coffee_ug)"
+    url: "https://huggingface.co/datasets/rgautroncgiar/croppie_coffee_ug"
+    licencia: "CC BY-SA 4.0 (según la ficha del dataset; verificar al citar)"
+    atribucion: "Croppie © 2024 by Producers Direct and Alliance Bioversity & CIAT"
+    # id original -> nombre original
+    clases_origen: {0: dark_brown_cherry, 1: green_cherry, 2: low_visibility_unsure, 3: red_cherry, 4: yellow_cherry}
+    mapeo:
+      green_cherry: VERDE
+      yellow_cherry: PINTON        # SUPUESTO pendiente de confirmar por el equipo (variedades amarillas maduras)
+      red_cherry: MADURO
+      dark_brown_cherry: SOBREMADURO
+      low_visibility_unsure: null  # se excluye: el propio dataset la marca como dudosa
