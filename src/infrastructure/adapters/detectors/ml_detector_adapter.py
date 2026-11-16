@@ -9,6 +9,10 @@ Detector de cerezas de cafe basado en un clasificador de pixeles entrenado
   4. Separa frutos que se tocan con watershed sobre la transformada de distancia.
   5. Cada region es una deteccion: estado = clase con mayor probabilidad media
      en la region, confianza = esa probabilidad media.
+
+PROCEDENCIA: el modelo incluido se entreno SOLO con escenas sinteticas. Este
+adaptador se declara familia SINTETICO y nunca "validado con datos reales":
+se conserva como demo y prueba de regresion (ADR-003).
 """
 from typing import List
 
@@ -20,8 +24,9 @@ from skimage.measure import regionprops
 from skimage.segmentation import watershed
 
 from ....domain.models.coffee_cherry import BoundingBox, DeteccionFruto, EstadoMadurez
+from ....domain.models.modelo_info import FamiliaModelo, ModeloInfo
 from ....domain.ports.fruit_detector_port import FruitDetectorPort
-from ...ml.features import CLASES, LADO_TRABAJO, redimensionar_para_trabajo
+from ...ml.features import LADO_TRABAJO, VERSION_CARACTERISTICAS, redimensionar_para_trabajo
 from ...ml.modelo import ModeloMadurezPixel
 
 _ESTADOS_POR_CLASE = {
@@ -65,6 +70,25 @@ class MLFruitDetectorAdapter(FruitDetectorPort):
         self.distancia_min_picos = distancia_min_picos
         self.excentricidad_max = excentricidad_max
         self.solidez_min = solidez_min
+        self._info = self._construir_info()
+
+    def _construir_info(self) -> ModeloInfo:
+        meta, manifiesto = self.modelo.metadatos, self.modelo.manifiesto
+        datos = manifiesto.get("datos_entrenamiento") or (
+            f"{meta.get('escenas_sinteticas', '?')} escenas sintéticas, {meta.get('imagenes_reales', 0)} imágenes reales"
+        )
+        return ModeloInfo(
+            nombre="Clasificador de píxeles + watershed (sintético)",
+            familia=FamiliaModelo.SINTETICO,
+            version=f"características v{VERSION_CARACTERISTICAS}, scikit-learn {manifiesto.get('version_sklearn', '?')}",
+            datos_entrenamiento=datos,
+            validado_con_datos_reales=False,
+            hash_pesos_sha256=self.modelo.sha256,
+            fecha_entrenamiento=manifiesto.get("fecha_entrenamiento"),
+        )
+
+    def info(self) -> ModeloInfo:
+        return self._info
 
     def detectar_frutos(self, imagen: Image.Image, umbral_confianza: float = 0.40) -> List[DeteccionFruto]:
         ancho_orig, alto_orig = imagen.size

@@ -3,6 +3,7 @@ Domain Value Object: ParametrosAgronomicos
 """
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class ParametrosAgronomicos:
     peso_medio_fruto_g: float = 1.8

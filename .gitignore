@@ -4,3 +4,13 @@ __pycache__/
 venv/
 .pytest_cache/
 .gradio/
+
+# Pesos y datos NO van a git (ADR-004): se publican como Release / Drive y se
+# verifican con su manifiesto (*.manifest.json, que SÍ se versiona).
+models/*.joblib
+models/*.pt
+models/*.onnx
+*.parcial
+datos/
+data/raw/
+runs/

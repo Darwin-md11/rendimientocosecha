@@ -2,7 +2,8 @@
 Application DTOs
 """
 from dataclasses import dataclass
-from typing import Dict, List, Any
+from typing import Any, Dict, List
+
 
 @dataclass
 class SolicitudEstimacionDTO:
@@ -21,3 +22,9 @@ class RespuestaEstimacionDTO:
     porcentaje_madurez: float
     imagen_anotada_bytes: bytes
     detecciones_detalle: List[Dict[str, Any]]
+    modelo: Dict[str, Any]  # ModeloInfo.como_dict(): qué modelo produjo este resultado
+    advertencias: List[str]  # vacía solo si el modelo está validado con datos reales
+
+    @property
+    def es_resultado_validado(self) -> bool:
+        return not self.advertencias

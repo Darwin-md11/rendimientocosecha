@@ -12,17 +12,19 @@ if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
 import io
-import pandas as pd
+
 import gradio as gr
+import pandas as pd
 from PIL import Image
 
-from src.application.use_cases.estimate_yield_use_case import AnalizarImagenCosechaUseCase
 from src.application.dtos.estimate_dto import SolicitudEstimacionDTO
-from src.infrastructure.composition import construir_detector
+from src.application.use_cases.estimate_yield_use_case import AnalizarImagenCosechaUseCase
 from src.domain.exceptions.domain_exceptions import DomainException
+from src.infrastructure.adapters.ui.presentacion import banner_markdown, mensaje_estado
+from src.infrastructure.composition import construir_detector
 
 # Inyección de dependencias (Puerto de Salida -> Adaptador Detector).
-# Por defecto usa el detector con machine learning; SIKAFE_DETECTOR=mock usa el simulado.
+# Ver composition.py: si el modelo configurado no carga, falla aqui con un mensaje claro.
 detector_adapter = construir_detector()
 use_case = AnalizarImagenCosechaUseCase(detector_adapter=detector_adapter)
 
@@ -68,7 +70,7 @@ def procesar_estimacion(imagen, peso_g, oclusion, plantas_muestra, plantas_total
         # Construcción de la tabla limpia de madurez
         conteo = respuesta.conteo_por_estado
         total = respuesta.total_frutos if respuesta.total_frutos > 0 else 1
-        
+
         df_datos = [
             {"Estado": "🟢 Verde (Inmaduro)", "Cantidad": conteo.get('VERDE', 0), "Proporción (%)": round((conteo.get('VERDE', 0)/total)*100, 1)},
             {"Estado": "🟡 Pintón (Transición)", "Cantidad": conteo.get('PINTON', 0), "Proporción (%)": round((conteo.get('PINTON', 0)/total)*100, 1)},
@@ -79,7 +81,7 @@ def procesar_estimacion(imagen, peso_g, oclusion, plantas_muestra, plantas_total
 
         return (
             imagen_anotada,
-            "✅ Inferencia y estimación agronómica completadas.",
+            mensaje_estado(respuesta),
             respuesta.total_frutos,
             respuesta.porcentaje_madurez,
             respuesta.rendimiento_estimado_kg,
@@ -103,17 +105,16 @@ with gr.Blocks(title="SIKAFE - Dashboard Agronómico", theme=theme) as demo:
         """
         # SIKAFE — Sistema Inteligente de Estimación de Cosecha de Café
         *Plataforma de Visión Artificial para la Estimación de Rendimiento Agronómico (Norte de Santander)*
-
-        > El modelo incluido se entrenó con escenas sintéticas. Para uso en campo,
-        > reentrénelo con fotos reales etiquetadas (ver README).
         """
     )
-    
+    # Banner permanente: procedencia del modelo y advertencia si no está validado.
+    gr.Markdown(banner_markdown(detector_adapter.info()))
+
     with gr.Row():
         with gr.Column(scale=5):
             gr.Markdown("#### 📥 Captura de Fotografía y Parámetros del Lote")
             input_image = gr.Image(type="pil", label="Fotografía RGB del Cafeto", sources=["upload", "webcam"])
-            
+
             with gr.Group():
                 gr.Markdown("##### ⚙️ Parámetros Agronómicos")
                 with gr.Row():
@@ -122,7 +123,7 @@ with gr.Blocks(title="SIKAFE - Dashboard Agronómico", theme=theme) as demo:
                 with gr.Row():
                     plantas_muestra = gr.Number(value=1, label="Plantas Muestra", precision=0)
                     plantas_totales = gr.Number(value=2500, label="Plantas Lote Total", precision=0)
-                
+
                 umbral = gr.Slider(minimum=0.1, maximum=1.0, value=0.40, step=0.05, label="Umbral de Confianza IA")
 
             btn_calcular = gr.Button("Analizar Fotografía y Estimar Rendimiento", variant="primary", size="lg")
@@ -130,7 +131,7 @@ with gr.Blocks(title="SIKAFE - Dashboard Agronómico", theme=theme) as demo:
         with gr.Column(scale=7):
             gr.Markdown("#### 📊 Reporte Agronómico e Inferencia")
             output_status = gr.Textbox(label="Estado del Procesamiento", interactive=False)
-            
+
             with gr.Row():
                 kpi_total = gr.Number(label="Total Cerezas", interactive=False)
                 kpi_madurez = gr.Number(label="Índice Madurez (%)", interactive=False)

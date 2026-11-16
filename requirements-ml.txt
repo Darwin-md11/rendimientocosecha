@@ -1,0 +1,5 @@
+# Laboratorio (ml/): entrenamiento y experimentos, pensado para Colab/Kaggle.
+# Las dependencias pesadas (ultralytics, torch, torchvision) se añadirán en la
+# Fase 3 con versiones fijadas. Ojo: la licencia de Ultralytics (verificar en su
+# repositorio; se reporta como AGPL-3.0) se documentará en docs/legal.md.
+-r requirements.txt
