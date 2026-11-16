@@ -3,7 +3,9 @@ Fase 0: falla rápida y segura al cargar modelos, y separación app (src/) / lab
 """
 import ast
 import json
+import re
 import shutil
+import sys
 from pathlib import Path
 
 import pytest
@@ -146,3 +148,35 @@ def test_toda_la_lectura_y_escritura_de_texto_declara_utf8():
         for linea in _es_texto_sin_encoding(archivo)
     ]
     assert infractores == [], 'agregue encoding="utf-8"'
+
+
+# Se importan solo dentro de funciones y las pruebas los simulan (requirements-ml.txt / Colab).
+_OPCIONALES = {"torch", "ultralytics", "huggingface_hub", "google"}
+_PAQUETE = {"PIL": "pillow", "yaml": "pyyaml", "sklearn": "scikit-learn", "skimage": "scikit-image"}
+
+
+def _requisitos(archivo: Path) -> set:
+    salida = set()
+    for linea in archivo.read_text(encoding="utf-8").splitlines():
+        linea = linea.split("#")[0].strip()
+        if linea.startswith("-r "):
+            salida |= _requisitos(archivo.parent / linea[3:].strip())
+        elif linea:
+            salida.add(re.split(r"[<>=!~\[ ;]", linea, maxsplit=1)[0].lower())
+    return salida
+
+
+def test_toda_libreria_importada_esta_en_requirements_dev():
+    """Lo que el código y las pruebas importan debe instalarse con requirements-dev.txt (si no, falla en otro computador o en la CI)."""
+    declarados = _requisitos(RAIZ / "requirements-dev.txt")
+    propios = {"src", "ml", "contrato_detector", "test_preparar_yolo", "test_yolo_adapter", "conftest"}
+    faltan = set()
+    for carpeta in ("src", "ml", "tests", "scripts"):
+        for archivo in (RAIZ / carpeta).rglob("*.py"):
+            for mod in _modulos_importados(archivo):
+                top = mod.split(".")[0]
+                if top in sys.stdlib_module_names or top in propios or top in _OPCIONALES:
+                    continue
+                if _PAQUETE.get(top, top).lower() not in declarados:
+                    faltan.add(f"{top} ({archivo.relative_to(RAIZ)})")
+    assert not faltan, f"faltan en requirements-dev.txt: {sorted(faltan)}"

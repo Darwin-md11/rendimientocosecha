@@ -409,6 +409,7 @@ def _grafico_clases(stats: dict, ruta: Path) -> None:
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
     except ImportError:
+        print("AVISO: matplotlib no está instalado; no se generan las figuras (pip install matplotlib).")
         return
     st = stats["por_split"]
     clases = list(st["train"]["cajas_por_clase"])

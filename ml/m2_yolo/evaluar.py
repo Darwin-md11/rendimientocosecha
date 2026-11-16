@@ -117,6 +117,7 @@ def _graficos(corrida: Path, split: str, metricas: dict, filas: list) -> None:
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
     except ImportError:
+        print("AVISO: matplotlib no está instalado; no se generan las figuras (pip install matplotlib).")
         return
     m = np.asarray(metricas["matriz_confusion"]["valores"])
     etiquetas = metricas["matriz_confusion"]["filas_real_columnas_pred"]
