@@ -116,3 +116,33 @@ def test_la_app_no_importa_librerias_de_entrenamiento_pesadas():
         if mod.split(".")[0] in pesadas
     ]
     assert infractores == [], "use import diferido dentro del adaptador que lo necesite"
+
+
+def _es_texto_sin_encoding(archivo: Path):
+    for n in ast.walk(ast.parse(archivo.read_text(encoding="utf-8"))):
+        if not isinstance(n, ast.Call):
+            continue
+        kws = {k.arg for k in n.keywords}
+        f = n.func
+        nombre = f.attr if isinstance(f, ast.Attribute) else (f.id if isinstance(f, ast.Name) else None)
+        if "encoding" in kws:
+            continue
+        if nombre == "read_text" and not n.args:
+            yield n.lineno
+        elif nombre == "write_text" and len(n.args) < 2:
+            yield n.lineno
+        elif nombre == "open" and isinstance(f, ast.Name):
+            modo = n.args[1].value if len(n.args) > 1 and isinstance(n.args[1], ast.Constant) else "r"
+            if "b" not in str(modo):
+                yield n.lineno
+
+
+def test_toda_la_lectura_y_escritura_de_texto_declara_utf8():
+    """En Windows la codificación por defecto no es UTF-8 (cp1252): sin encoding explícito, las tildes se corrompen."""
+    infractores = [
+        f"{archivo.relative_to(RAIZ)}:{linea}"
+        for carpeta in ("src", "ml", "tests", "scripts")
+        for archivo in (RAIZ / carpeta).rglob("*.py")
+        for linea in _es_texto_sin_encoding(archivo)
+    ]
+    assert infractores == [], 'agregue encoding="utf-8"'

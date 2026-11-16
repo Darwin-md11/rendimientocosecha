@@ -1,4 +1,5 @@
 """Preparación de datos YOLO: mapeo de clases, enmascarado, partición por grupo y prueba de fuga."""
+
 import json
 
 import numpy as np
@@ -20,7 +21,7 @@ def _img(ruta, semilla, tam=(64, 48)):
 
 def _lbl(ruta, filas):
     ruta.parent.mkdir(parents=True, exist_ok=True)
-    ruta.write_text("\n".join(" ".join(str(v) for v in f) for f in filas) + "\n")
+    ruta.write_text("\n".join(" ".join(str(v) for v in f) for f in filas) + "\n", encoding="utf-8")
 
 
 @pytest.fixture
@@ -69,7 +70,7 @@ def test_preparacion_completa(croppie_juguete, tmp_path):
     r = py.preparar(croppie_juguete, destino, "croppie", semilla=0)
 
     # Partición por grupo, sin fuga y ~70/15/15
-    man = json.loads((destino / "manifiesto.json").read_text())
+    man = json.loads((destino / "manifiesto.json").read_text(encoding="utf-8"))
     split_por_grupo = {}
     for a in man["archivos"]:
         assert split_por_grupo.setdefault(a["grupo"], a["split"]) == a["split"], "un grupo en dos particiones"
@@ -86,7 +87,7 @@ def test_preparacion_completa(croppie_juguete, tmp_path):
 
     # Etiquetas reescritas con índices 0..3 y sin la clase excluida
     una = next((destino / "labels" / "train").glob("*.txt"))
-    clases = sorted(int(linea.split()[0]) for linea in una.read_text().splitlines())
+    clases = sorted(int(linea.split()[0]) for linea in una.read_text(encoding="utf-8").splitlines())
     assert clases == [0, 1, 2, 3]
 
     # La región excluida queda enmascarada en gris (no se aprende como fondo)
@@ -96,9 +97,9 @@ def test_preparacion_completa(croppie_juguete, tmp_path):
     assert np.abs(centro - 114).max() < 12
 
     # data.yaml listo para Ultralytics, y artefactos de EDA
-    data = yaml.safe_load((destino / "data.yaml").read_text())
+    data = yaml.safe_load((destino / "data.yaml").read_text(encoding="utf-8"))
     assert data["names"] == {0: "VERDE", 1: "PINTON", 2: "MADURO", 3: "SOBREMADURO"} and data["test"] == "images/test"
-    assert (destino / "eda.md").read_text().startswith("# Análisis exploratorio") and (destino / "eda_clases.png").is_file()
+    assert (destino / "eda.md").read_text(encoding="utf-8").startswith("# Análisis exploratorio") and (destino / "eda_clases.png").is_file()
 
 
 def test_misma_semilla_mismo_dataset_otra_semilla_otro(croppie_juguete, tmp_path):
@@ -120,7 +121,7 @@ def test_split_original_y_errores_de_formato(croppie_juguete, tmp_path):
     assert "original" in r["estrategia_particion"] and r["estadisticas"]["por_split"]["test"]["imagenes"] == 0
 
     malo = next((croppie_juguete / "train" / "labels").glob("*.txt"))
-    malo.write_text("1 0.5 0.5\n")
+    malo.write_text("1 0.5 0.5\n", encoding="utf-8")
     with pytest.raises(py.ErrorPreparacion, match="5 valores"):
         py.preparar(croppie_juguete, tmp_path / "out2", "croppie")
 

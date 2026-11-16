@@ -440,7 +440,7 @@ def inspeccionar(origen: Path, patron_grupo: str = PATRON_AUTO, n: int = 15) -> 
     clases = collections.Counter()
     for m in muestras:
         if m.etiqueta:
-            clases.update(linea.split()[0] for linea in m.etiqueta.read_text().splitlines() if linea.strip())
+            clases.update(linea.split()[0] for linea in m.etiqueta.read_text(encoding="utf-8").splitlines() if linea.strip())
     info = {
         "imagenes": len(muestras),
         "por_split_origen": dict(por_split),

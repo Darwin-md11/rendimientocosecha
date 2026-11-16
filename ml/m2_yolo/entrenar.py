@@ -14,6 +14,7 @@ Deja en <salida>/<id_corrida>/:
     metricas_val_ultralytics.json
 El conjunto de prueba NO se toca aquí (ver ml/m2_yolo/evaluar.py --final).
 """
+
 import argparse
 import json
 import shutil
@@ -80,14 +81,24 @@ def entrenar(config: Path, datos: Path, salida: Path, semilla=None) -> Path:
     corrida.mkdir(parents=True, exist_ok=False)
     (corrida / "config.yaml").write_text(yaml.safe_dump({**cfg, "datos": str(datos)}, allow_unicode=True), encoding="utf-8")
     entorno = guardar_json(corrida / "entorno.json", capturar_entorno(Path(datos)))
-    print(f"Corrida: {corrida}\nEntorno: {entorno.read_text()}")
+    print(f"Corrida: {corrida}\nEntorno: {entorno.read_text(encoding='utf-8')}")
 
     fijar_semillas(cfg["semilla"])
     modelo = YOLO(cfg["modelo_base"])
     modelo.train(
-        data=str(datos), imgsz=cfg["imgsz"], epochs=cfg["epochs"], patience=cfg["patience"], batch=cfg["batch"],
-        seed=cfg["semilla"], deterministic=True, workers=cfg.get("workers", 2),
-        project=str(corrida), name="train", exist_ok=True, plots=True, verbose=True,
+        data=str(datos),
+        imgsz=cfg["imgsz"],
+        epochs=cfg["epochs"],
+        patience=cfg["patience"],
+        batch=cfg["batch"],
+        seed=cfg["semilla"],
+        deterministic=True,
+        workers=cfg.get("workers", 2),
+        project=str(corrida),
+        name="train",
+        exist_ok=True,
+        plots=True,
+        verbose=True,
     )
     return finalizar(corrida)
 
@@ -116,7 +127,7 @@ def finalizar(corrida: Path) -> Path:
     res = modelo.val(data=cfg["datos"], split="val", imgsz=cfg["imgsz"], conf=0.001, iou=0.6, project=str(corrida), name="val", exist_ok=True)
     metricas = guardar_json(corrida / "metricas_val_ultralytics.json", _metricas_ultralytics(res, nombres))
     print("\n=== VALIDACIÓN (Ultralytics, partición val) ===")
-    print(metricas.read_text())
+    print(metricas.read_text(encoding="utf-8"))
     print(f"\nPesos para la app: {corrida / 'm2_yolo.pt'} (+ m2_yolo.manifest.json)")
     return corrida
 

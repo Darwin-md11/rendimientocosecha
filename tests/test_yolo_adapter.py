@@ -124,7 +124,7 @@ def _publicar(tmp_path, **extra):
         "dominio_validacion": "Croppie test (Uganda)",
         **extra,
     }
-    (tmp_path / "m2_yolo.manifest.json").write_text(json.dumps(man))
+    (tmp_path / "m2_yolo.manifest.json").write_text(json.dumps(man), encoding="utf-8")
     return pesos
 
 

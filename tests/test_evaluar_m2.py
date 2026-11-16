@@ -36,7 +36,7 @@ def corrida(croppie_juguete, tmp_path, monkeypatch):  # noqa: F811
         "conf_reporte": 0.25,
         "datos": str(datos / "data.yaml"),
     }
-    (corrida / "config.yaml").write_text(yaml.safe_dump(cfg))
+    (corrida / "config.yaml").write_text(yaml.safe_dump(cfg), encoding="utf-8")
     (corrida / "m2_yolo.pt").write_bytes(b"pesos de prueba")
     entrenar.escribir_manifiesto_app(
         corrida, cfg, datos / "data.yaml", ["VERDE", "PINTON", "MADURO", "SOBREMADURO"], capturar_entorno(datos / "data.yaml")
@@ -50,7 +50,7 @@ def corrida(croppie_juguete, tmp_path, monkeypatch):  # noqa: F811
 
 
 def test_manifiesto_de_la_corrida(corrida):
-    man = json.loads((corrida / "m2_yolo.manifest.json").read_text())
+    man = json.loads((corrida / "m2_yolo.manifest.json").read_text(encoding="utf-8"))
     assert man["familia"] == "M2" and man["validado_con_datos_reales"] is False and man["clases"][1] == "PINTON"
     assert "croppie" in man["datos_entrenamiento"] and "CC BY-SA" in man["datos_entrenamiento"]
 
@@ -68,7 +68,7 @@ def test_test_solo_una_vez_y_manifiesto_validado(corrida):
     with pytest.raises(SystemExit, match="--final"):
         evaluar.main(["--corrida", str(corrida), "--split", "test"])
     assert evaluar.main(["--corrida", str(corrida), "--split", "test", "--final"]) == 0
-    man = json.loads((corrida / "m2_yolo.manifest.json").read_text())
+    man = json.loads((corrida / "m2_yolo.manifest.json").read_text(encoding="utf-8"))
     assert man["validado_con_datos_reales"] is True and man["validado_en_dominio_objetivo"] is False
     assert "croppie partición test" in man["dominio_validacion"] and man["metricas_test"]["map50"] == pytest.approx(1.0)
     for archivo in (

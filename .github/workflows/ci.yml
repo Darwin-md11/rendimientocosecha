@@ -6,7 +6,11 @@ on:
 
 jobs:
   pruebas:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]   # el equipo trabaja en Windows (codificación cp1252)
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
