@@ -9,10 +9,10 @@ from typing import Any, Dict, List
 from ....application.dtos.estimate_dto import RespuestaEstimacionDTO
 from ....domain.models.modelo_info import ModeloInfo
 
-ESTADO_OK = "✅ Inferencia y estimación agronómica completadas (modelo validado con datos reales)."
+ESTADO_OK = "✅ Inferencia y estimación agronómica completadas (modelo validado con fotos de la región)."
 ESTADO_NO_VALIDADO = (
-    "⚠️ Inferencia completada con un modelo NO VALIDADO con datos reales: "
-    "los conteos y el rendimiento son ilustrativos, no los use para decisiones de campo."
+    "⚠️ Inferencia completada con un modelo que NO está validado para este uso: "
+    "revise las advertencias antes de usar los conteos o el rendimiento."
 )
 
 
@@ -30,6 +30,7 @@ def _filas_procedencia(modelo: Dict[str, Any]) -> List[tuple]:
         ("Versión", modelo["version"]),
         ("Datos de entrenamiento", modelo["datos_entrenamiento"]),
         ("Validado con datos reales", "Sí" if modelo["validado_con_datos_reales"] else "NO"),
+        ("Dominio de validación", modelo.get("dominio_validacion") or "—"),
         ("SHA-256 de los pesos", f"{sha[:16]}…" if sha else "—"),
         ("Fecha de entrenamiento", modelo.get("fecha_entrenamiento") or "no registrada"),
     ]

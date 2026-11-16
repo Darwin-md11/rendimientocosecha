@@ -87,9 +87,9 @@ def test_composicion_no_reentrena_ni_cambia_de_detector(copia_modelo, monkeypatc
 
 
 # ------------------------------------------------------------ arquitectura
-def _modulos_importados(archivo: Path):
+def _modulos_importados(archivo: Path, solo_nivel_modulo: bool = False):
     arbol = ast.parse(archivo.read_text(encoding="utf-8"))
-    for nodo in ast.walk(arbol):
+    for nodo in arbol.body if solo_nivel_modulo else ast.walk(arbol):
         if isinstance(nodo, ast.Import):
             yield from (a.name for a in nodo.names)
         elif isinstance(nodo, ast.ImportFrom) and nodo.level == 0 and nodo.module:
@@ -112,7 +112,7 @@ def test_la_app_no_importa_librerias_de_entrenamiento_pesadas():
     infractores = [
         f"{archivo.relative_to(RAIZ)} -> {mod}"
         for archivo in (RAIZ / "src").rglob("*.py")
-        for mod in _modulos_importados(archivo)
+        for mod in _modulos_importados(archivo, solo_nivel_modulo=True)
         if mod.split(".")[0] in pesadas
     ]
     assert infractores == [], "use import diferido dentro del adaptador que lo necesite"
