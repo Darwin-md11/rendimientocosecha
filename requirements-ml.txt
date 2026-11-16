@@ -1,5 +1,11 @@
-# Laboratorio (ml/): entrenamiento y experimentos, pensado para Colab/Kaggle.
-# Las dependencias pesadas (ultralytics, torch, torchvision) se añadirán en la
-# Fase 3 con versiones fijadas. Ojo: la licencia de Ultralytics (verificar en su
-# repositorio; se reporta como AGPL-3.0) se documentará en docs/legal.md.
--r requirements.txt
+# Laboratorio (ml/): datos, entrenamiento y evaluación, pensado para Google Colab/Kaggle
+# (Colab ya trae PyTorch con CUDA). No incluye gradio ni scikit-learn: ml/m2_yolo solo
+# usa de src/ el dominio, el adaptador YOLO y las métricas (numpy).
+# Licencia de Ultralytics: se reporta como AGPL-3.0 -> verificar en su repositorio y
+# documentar la implicación en docs/legal.md antes de distribuir el prototipo.
+ultralytics>=8.3,<9
+huggingface_hub>=0.23
+pyyaml>=6.0
+matplotlib>=3.7
+pillow>=10.1.0
+numpy>=1.24.0

@@ -1,0 +1,11 @@
+# M2 – YOLO11n, entrada 960 px (experimento (c): resolución mayor para cerezas pequeñas).
+nombre: m2_yolo11n_960
+modelo_base: yolo11n.pt      # preentrenado en COCO (transfer learning)
+imgsz: 960
+epochs: 60
+patience: 15                 # parada temprana sobre val
+batch: 8                     # 960 px usa más memoria
+semilla: 0
+workers: 2
+iou_nms: 0.6                 # NMS en inferencia (racimos densos: no subir de 0.7)
+conf_reporte: 0.25           # umbral para P/R/F1 y conteo
