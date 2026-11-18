@@ -77,7 +77,10 @@ def test_catalogo_del_repositorio_con_parametros_de_cenicafe():
     assert oclusion.tipo == CALIBRACION and oclusion.valor == 1.0 and not oclusion.tiene_fuente and oclusion.fuente_mostrada == TODO_FUENTE
     assert "pendiente de calibración" in peso.estado and cat.version_parametros == "2026-11-18"
     assert cat.estados_cosechables == ("MADURO", "SOBREMADURO") and "Cartilla 19" in cat.fuente_estados_cosechables
-    assert len(cat.simplificaciones) == 2 and not cat.calibrado_localmente
+    assert len(cat.simplificaciones) == 4 and not cat.calibrado_localmente
+    # Decisión del equipo (ADR-011): una foto = una planta completa
+    assert cat.muestreo_definido and "una planta completa" in cat.supuesto_muestreo
+    assert cat.factores["plantas_muestra"].valor == 1 and cat.factores["plantas_muestra"].tiene_fuente
 
 
 def test_respuesta_con_el_catalogo_del_repositorio():
@@ -97,9 +100,11 @@ def test_respuesta_con_el_catalogo_del_repositorio():
         "Sin calibración local",
         "variedad Colombia",
         "Marín-López",
-        "Unidad de muestreo",
+        "una cara de la planta",
+        "representa a todas las del lote",
     ):
         assert esperado in textos, esperado
+    assert "Unidad de muestreo sin definir" not in textos and "una planta completa" in r.unidad_muestreo
     lineas = "\n".join(lineas_supuestos(r))
     assert "Listo para cosechar (maduro + sobremaduro: 8 cerezas): 37.0" in lineas and "Cartilla 19" in lineas and "versión 2026-11-18" in lineas
 

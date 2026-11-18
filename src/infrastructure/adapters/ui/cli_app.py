@@ -16,7 +16,7 @@ from ....application.dtos.estimate_dto import SolicitudEstimacionDTO
 from ....application.use_cases.estimate_yield_use_case import AnalizarImagenCosechaUseCase
 from ....domain.exceptions.domain_exceptions import DomainException
 from ...composition import DETECTORES_DISPONIBLES, construir_catalogo, construir_detector
-from .presentacion import lineas_cli
+from .presentacion import UMBRAL_POR_DEFECTO, lineas_cli
 
 IMAGEN_DEMO = Path(__file__).resolve().parents[4] / "assets" / "demo_sintetica.jpg"
 
@@ -27,9 +27,9 @@ def run_cli(argv=None) -> int:
     p.add_argument("--detector", choices=[*DETECTORES_DISPONIBLES, "ml"], default=None)
     p.add_argument("--peso-g", type=float, help="peso medio por cereza en g (por defecto: configs/agronomia.yaml)")
     p.add_argument("--oclusion", type=float, help="factor de oclusion >= 1.0 (por defecto: configs/agronomia.yaml)")
-    p.add_argument("--plantas-muestra", type=int, help="plantas que cubren la foto (por defecto: configs/agronomia.yaml)")
+    p.add_argument("--plantas-muestra", type=int, help="plantas que cubre la foto (por defecto 1: una foto = una planta completa)")
     p.add_argument("--plantas-lote", type=int, help="plantas del lote (por defecto: configs/agronomia.yaml)")
-    p.add_argument("--umbral", type=float, default=0.40, help="umbral de confianza (0 a 1)")
+    p.add_argument("--umbral", type=float, default=UMBRAL_POR_DEFECTO, help="umbral de confianza (0 a 1; 0,25 = el de la evaluación)")
     p.add_argument("--guardar-anotada", type=Path, help="ruta donde guardar la imagen con las detecciones")
     args = p.parse_args(argv)
 

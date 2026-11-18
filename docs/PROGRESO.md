@@ -8,7 +8,7 @@
 | Fase | Estado | Rama |
 |---|---|---|
 | 0 — Línea base, honestidad y orden del repo | ✔ en `main` (PR #1); Release `modelo-sintetico-v1` | `fase-0-honestidad` |
-| 1 — Módulo de rendimiento | ✔ parámetros de Cenicafé (1,85 g; 0,20) con fuente, oclusión sin calibrar, potencial y listo para cosechar (ADR-010); **pendiente:** calibración local y unidad de muestreo | `fase-2-3-croppie-yolo` → `main` |
+| 1 — Módulo de rendimiento | ✔ parámetros de Cenicafé (1,85 g; 0,20) con fuente, oclusión sin calibrar, potencial y listo para cosechar (ADR-010); una foto = una planta (ADR-011); **pendiente:** calibración local | `fase-2-3-croppie-yolo` → `main` |
 | 2 — Datos (Croppie) | ✔ preparado en Colab: partición por sesión (60 sesiones), prueba de fuga OK, dataset `9dbcf58b…` | `fase-2-3-croppie-yolo` → `main` |
 | 3 — M0, M1 y M2 | ✔ entrenados y evaluados en test (F1 macro M0 0,633/0,659 · M1 0,744 · M2 0,776; mAP@0,5 0,603; R² 0,959) | `fase-2-3-croppie-yolo` → `main` |
 | CUDA (requisito del curso) | ✔ ejecutado en T4: equivalencia OK, 43,6× (kernel vs mejor CPU); YOLO 7,8× | `fase-2-3-croppie-yolo` → `main` |
@@ -44,7 +44,7 @@
 
 ## Pendientes / preguntas abiertas
 
-- [ ] **Unidad de muestreo** (qué cubre una foto: rama, lado de planta, planta): sin definir. Bloquea la cadena de rendimiento completa de la Fase 1.
+- [x] **Unidad de muestreo:** una foto = una planta completa (decisión del equipo 2026-11-18, ADR-011). Pendiente: muestreo de varias plantas.
 - [ ] **Estimación con varias fotos**: sin definir (requiere visto bueno del docente). Mientras tanto, una imagen a la vez.
 - [x] Fuentes de peso por cereza y factor cereza→pergamino (investigación del equipo, Cenicafé; ADR-010). Pendiente: calibración local.
 - [x] Mapeo amarilla → PINTÓN confirmado por el equipo (2026-11-18).
@@ -198,3 +198,12 @@ conteo R² 0,959 frente a las anotaciones. Pendiente para el jueves: tablas/figu
 - README reescrito con el estado real, los resultados, el uso, la publicación del modelo, el laboratorio, las limitaciones y las licencias.
   Prueba nueva `tests/test_privacidad.py`: la imagen anotada sale sin EXIF ni GPS.
 - Pendiente: `docs/legal.md` (licencia de Ultralytics y del repositorio) y `docs/reproducibilidad.md`.
+
+### 2026-11-18 (tarde) — Unidad de muestreo e interfaz nueva (ADR-011)
+
+- Decisión del equipo: **una foto = una planta completa**; `plantas_muestra = 1` con fuente, ya no se pide en la interfaz. Dos
+  simplificaciones nuevas en cada resultado (una sola cara de la planta; una planta representa al lote).
+- Umbral por defecto 0,25 (el de la evaluación) en la interfaz y la CLI; antes 0,40.
+- Interfaz rehecha: tarjetas, barra de madurez, advertencias visibles con lista desplegable, pestañas (foto, desglose, cálculo paso a
+  paso con fuentes) y parámetros avanzados plegados. Paleta de madurez validada con el validador de dataviz (claro y oscuro).
+  Revisada con capturas en Chrome con el detector sintético (aquí no hay PyTorch para YOLO).

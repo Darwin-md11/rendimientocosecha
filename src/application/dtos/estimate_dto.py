@@ -35,6 +35,7 @@ class RespuestaEstimacionDTO:
     rendimiento_cosechable_kg: Optional[float] = None
     rendimiento_cosechable_pergamino_kg: Optional[float] = None
     version_parametros: Optional[str] = None
+    unidad_muestreo: Optional[str] = None  # qué representa la foto (configs/agronomia.yaml, muestreo.supuesto)
 
     @property
     def es_resultado_validado(self) -> bool:

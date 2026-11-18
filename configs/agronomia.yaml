@@ -20,11 +20,13 @@ estados_cosechables: [MADURO, SOBREMADURO]
 fuente_estados_cosechables: "Cenicafé (2004), Cartilla 19: Recolección del café (recomienda recolectar frutos maduros)"
 
 muestreo:
-  definido: false
-  supuesto: "Las fotos analizadas cubren completas las 'plantas_muestra' plantas (unidad de muestreo aún sin definir por el equipo)."
+  definido: true   # decisión del equipo 2026-11-18 (ADR-011), por el plazo de entrega
+  supuesto: "Cada foto muestra una planta completa: plantas de muestra = 1 por foto, y el rendimiento del lote = rendimiento de esa planta × plantas del lote."
 
 # Simplificaciones que se advierten en cada resultado
 simplificaciones:
+  - "Una foto muestra solo una cara de la planta: las cerezas del otro lado y las tapadas por hojas no se ven, y no se corrigen mientras el factor de oclusión siga en 1,0 (sin calibrar). El conteo y el rendimiento son, por eso, un mínimo."
+  - "Se supone que la planta fotografiada representa a todas las del lote (una sola foto, sin repetir el muestreo en varias plantas)."
   - "Se usa un único peso por cereza y un único factor de conversión para todos los estados de madurez; la conversión cereza→pergamino varía mucho con la madurez (Marín-López et al., 2003) y un fruto sobremaduro pesa en promedio 12 % menos que uno maduro (Sanz-Uribe et al., 2018)."
   - "Los parámetros provienen de café variedad Colombia en Caldas (cosecha 2005-II); el detector se entrenó con fotos de Uganda (Croppie). Ninguno está calibrado para Norte de Santander."
 
@@ -46,11 +48,11 @@ factores:
     incertidumbre: null
     estado: pendiente de calibración con conteo manual (no se corrige)
   plantas_muestra:
-    descripcion: Plantas que cubren las fotos analizadas
+    descripcion: Plantas que cubre la foto analizada
     tipo: dato
     valor: 1
     unidad: plantas
-    fuente: null
+    fuente: "decisión del equipo (2026-11-18, ADR-011): una foto = una planta completa"
     incertidumbre: null
   plantas_totales_lote:
     descripcion: Plantas del lote

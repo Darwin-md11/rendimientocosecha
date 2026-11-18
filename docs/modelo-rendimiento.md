@@ -25,7 +25,7 @@ seco (el ejemplo de la investigación del equipo).
 | Peso medio de una cereza | literatura | **1,85 g** | Montilla-Pérez et al. (2008), Cenicafé 59(2):120-142, Tabla 17, café **sin seleccionar** (seleccionado: 1,99 g) | referencia bibliográfica, pendiente de calibración local |
 | Cereza → pergamino seco | literatura | **0,20** kg/kg | Montilla-Pérez et al. (2008), Tabla 20 (aproximado: 1/4,94–1/4,89 = 0,202–0,205) | referencia bibliográfica, pendiente de calibración local |
 | Corrección por cerezas ocultas | calibración | **1,0** (sin corrección) | no existe valor bibliográfico | pendiente de calibración con conteo manual |
-| Plantas que cubren las fotos | dato | 1 | lo ingresa el usuario | unidad de muestreo sin definir |
+| Plantas que cubre la foto | dato | 1 | decisión del equipo (ADR-011): una foto = una planta completa | fijo en la interfaz |
 | Plantas del lote | dato | 2500 (ejemplo) | lo ingresa el usuario | — |
 
 Valores verificados contra el PDF original de Cenicafé (Tablas 17, 18 y 20) el 2026-11-18.
@@ -48,7 +48,9 @@ Reglas (implementadas en `src/domain/models/supuestos.py`):
 2. **Tres contextos distintos:** parámetros de variedad Colombia en Caldas (2005); detector entrenado con fotos de Uganda (Croppie);
    uso previsto en Norte de Santander. Nada está calibrado para la zona.
 3. **Oclusión sin corregir:** el conteo solo incluye cerezas visibles.
-4. **Unidad de muestreo sin definir:** se supone que las fotos cubren completas las `plantas_muestra` plantas.
+4. **Unidad de muestreo (ADR-011):** cada foto muestra una planta completa. La foto solo ve una cara de la planta, así que el conteo
+   es un mínimo mientras la oclusión siga en 1,0, y se supone que esa planta representa a todo el lote. Con fotos de una rama, el kg
+   del lote no es válido: úsense el conteo y la madurez.
 5. **Sin validación con cosecha real** (error porcentual y sesgo desconocidos).
 
 ## Calibración local propuesta (trabajo futuro)

@@ -165,8 +165,10 @@ def test_gradio_muestra_advertencia(monkeypatch):
     monkeypatch.setitem(os.environ, "SIKAFE_DETECTOR", "mock")
     from src.infrastructure.adapters.ui import gradio_app
 
-    salida = gradio_app.procesar_estimacion(Image.new("RGB", (200, 150)), 1.8, 1.25, 1, 2500, 0.4)
-    assert "✅" not in salida[1] and "NO está validado" in salida[1]
+    imagen, resumen, tabla, calculo = gradio_app.procesar_estimacion(Image.new("RGB", (200, 150)), 2500, 1.8, 1.25, 0.4)
+    assert imagen is not None and "✅" not in resumen
+    assert presentacion.TITULAR_AVISOS in resumen and "NO está validado" in resumen  # advertencias visibles sin desplegar
+    assert list(tabla.columns)[:2] == ["Estado", "Cerezas"] and "Supuestos del cálculo" in calculo
 
 
 def test_modelo_validado_pero_rendimiento_sin_fuentes_no_es_ok():
