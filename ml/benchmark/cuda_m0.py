@@ -17,6 +17,7 @@ La lectura de imágenes, el recorte y el reescalado a 48x48 se hacen una vez en 
 import argparse
 import statistics
 import time
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -93,7 +94,9 @@ def comparar(imgs48: np.ndarray, n_por_recorte: int = 2000, repeticiones: int = 
         res["gpu"] = {"disponible": False, "motivo": "no hay GPU CUDA o falta numba"}
         return res
     t0 = time.perf_counter()
-    descriptor_lote_cuda(imgs48[:256])  # primera llamada: compila el kernel
+    with warnings.catch_warnings():  # la llamada de compilación usa pocos recortes: el aviso de baja ocupación no aplica
+        warnings.simplefilter("ignore")
+        descriptor_lote_cuda(imgs48[:256])  # primera llamada: compila el kernel
     compilacion = time.perf_counter() - t0
     corridas = []
     for _ in range(repeticiones):

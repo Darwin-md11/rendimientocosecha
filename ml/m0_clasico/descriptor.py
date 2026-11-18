@@ -165,18 +165,22 @@ def descriptor_secuencial(img, lut, gris, celdas, out):  # noqa: C901 (una sola 
     sb = 0.0
     for y in range(48):
         for x in range(48):
-            r = int(img[y, x, 0])
-            g = int(img[y, x, 1])
-            b = int(img[y, x, 2])
-            gris[y * 48 + x] = (299 * r + 587 * g + 114 * b + 500) // 1000
+            ri = int(img[y, x, 0])
+            gi = int(img[y, x, 1])
+            bi = int(img[y, x, 2])
+            gris[y * 48 + x] = (299 * ri + 587 * gi + 114 * bi + 500) // 1000
+            # HSV en coma flotante: en la GPU, int(uint8) puede ser un entero SIN signo y g - b daría la vuelta
+            r = float(ri)
+            g = float(gi)
+            b = float(bi)
             mx = r if r > g else g
             mx = mx if mx > b else b
             mn = r if r < g else g
             mn = mn if mn < b else b
             d = mx - mn
             vv = mx / 255.0
-            s_ = d / mx if mx > 0 else 0.0
-            if d == 0:
+            s_ = d / mx if mx > 0.0 else 0.0
+            if d == 0.0:
                 hh = 0.0
             else:
                 if mx == r:
@@ -190,9 +194,9 @@ def descriptor_secuencial(img, lut, gris, celdas, out):  # noqa: C901 (una sola 
                 hh = hh / 6.0
                 if hh >= 1.0:
                     hh = hh - 1.0
-            lr = lut[r]
-            lg = lut[g]
-            lb = lut[b]
+            lr = lut[ri]
+            lg = lut[gi]
+            lb = lut[bi]
             tx = (0.412453 * lr + 0.357580 * lg + 0.180423 * lb) / 0.95047
             ty = (0.212671 * lr + 0.715160 * lg + 0.072169 * lb) / 1.0
             tz = (0.019334 * lr + 0.119193 * lg + 0.950227 * lb) / 1.08883
@@ -258,17 +262,20 @@ def descriptor_secuencial(img, lut, gris, celdas, out):  # noqa: C901 (una sola 
     db = 0.0
     for y in range(48):
         for x in range(48):
-            r = int(img[y, x, 0])
-            g = int(img[y, x, 1])
-            b = int(img[y, x, 2])
+            ri = int(img[y, x, 0])
+            gi = int(img[y, x, 1])
+            bi = int(img[y, x, 2])
+            r = float(ri)
+            g = float(gi)
+            b = float(bi)
             mx = r if r > g else g
             mx = mx if mx > b else b
             mn = r if r < g else g
             mn = mn if mn < b else b
             d = mx - mn
             vv = mx / 255.0
-            s_ = d / mx if mx > 0 else 0.0
-            if d == 0:
+            s_ = d / mx if mx > 0.0 else 0.0
+            if d == 0.0:
                 hh = 0.0
             else:
                 if mx == r:
@@ -282,9 +289,9 @@ def descriptor_secuencial(img, lut, gris, celdas, out):  # noqa: C901 (una sola 
                 hh = hh / 6.0
                 if hh >= 1.0:
                     hh = hh - 1.0
-            lr = lut[r]
-            lg = lut[g]
-            lb = lut[b]
+            lr = lut[ri]
+            lg = lut[gi]
+            lb = lut[bi]
             tx = (0.412453 * lr + 0.357580 * lg + 0.180423 * lb) / 0.95047
             ty = (0.212671 * lr + 0.715160 * lg + 0.072169 * lb) / 1.0
             tz = (0.019334 * lr + 0.119193 * lg + 0.950227 * lb) / 1.08883

@@ -121,3 +121,17 @@ def test_benchmark_yolo_pasa_el_dispositivo_al_modelo(tmp_path, monkeypatch):
     res = yolo_cpu_gpu.comparar(pesos, imgs, calentamiento=2)
     assert creados[-1].llamadas[-1][1]["device"] == 0 and res["consistencia"]["pct_imagenes_mismo_conteo"] == 100.0
     assert "Aceleración" in yolo_cpu_gpu.tabla_md(res, {"plataforma": "prueba", "gpu": "GPU de prueba"})
+
+
+def test_funcion_del_kernel_con_enteros_sin_signo_como_en_la_gpu(monkeypatch):
+    """En la GPU, Numba puede convertir uint8 a un entero SIN signo: g - b con b > g da la vuelta (~1,8e19).
+    Se imita haciendo que int() devuelva numpy.uint64 dentro del módulo: el resultado debe seguir igual a la referencia.
+    (Esta prueba falla con la versión que restaba enteros en el cálculo del tono HSV.)"""
+    import builtins
+
+    monkeypatch.setattr(D, "int", lambda v: np.uint64(builtins.int(v)), raising=False)
+    imgs = _recortes_variados(n_ruido=3)
+    ref = D.descriptor_lote_numpy(imgs)
+    with np.errstate(over="raise"):  # cualquier resta sin signo que dé la vuelta hace fallar la prueba
+        seq = np.stack([D.descriptor_secuencial_cpu(i) for i in imgs])
+    assert cuda_m0.verificar_equivalencia(ref, seq)["equivalente"]
