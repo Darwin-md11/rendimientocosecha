@@ -190,10 +190,12 @@ def entrenar(config: Path, datos: Path, salida: Path, rapido: bool = False, semi
                 loss = perdida(modelo(x), yb)
             escalador.scale(loss).backward()
             escalador.step(optimizador)
+            escala_antes = escalador.get_scale()
             escalador.update()
-            if planificador is not None:
+            # Si la precisión mixta saltó este paso (gradientes infinitos al ajustar su escala), no se avanza el planificador
+            if planificador is not None and escalador.get_scale() >= escala_antes:
                 planificador.step()
-            total += float(loss) * len(yb)
+            total += float(loss.detach()) * len(yb)
             n += len(yb)
         return total / max(n, 1)
 

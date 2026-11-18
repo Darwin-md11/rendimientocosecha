@@ -16,10 +16,22 @@ ESTADO_NO_VALIDADO = (
 )
 
 
+def lineas_supuestos(respuesta: RespuestaEstimacionDTO) -> List[str]:
+    lineas = [f"Rendimiento estimado: {respuesta.rendimiento_estimado_kg} {respuesta.unidad_rendimiento}"]
+    if respuesta.rendimiento_pergamino_kg is not None:
+        lineas.append(f"Equivalente en café pergamino seco: {respuesta.rendimiento_pergamino_kg} kg")
+    lineas.append("Supuestos del cálculo:")
+    for s in respuesta.supuestos:
+        valor = "—" if s["valor"] is None else f"{s['valor']:g} {s['unidad']}"
+        lineas.append(f"  - {s['descripcion']}: {valor} (fuente: {s['fuente']})")
+    return lineas
+
+
 def mensaje_estado(respuesta: RespuestaEstimacionDTO) -> str:
+    supuestos = "\n\n" + "\n".join(lineas_supuestos(respuesta)) if respuesta.supuestos else ""
     if respuesta.advertencias:
-        return ESTADO_NO_VALIDADO + "\n" + "\n".join(f"• {a}" for a in respuesta.advertencias)
-    return ESTADO_OK
+        return ESTADO_NO_VALIDADO + "\n" + "\n".join(f"• {a}" for a in respuesta.advertencias) + supuestos
+    return ESTADO_OK + supuestos
 
 
 def _filas_procedencia(modelo: Dict[str, Any]) -> List[tuple]:
@@ -51,6 +63,8 @@ def banner_markdown(info: ModeloInfo) -> str:
 def lineas_cli(respuesta: RespuestaEstimacionDTO) -> List[str]:
     """Bloque de procedencia y advertencias para la CLI."""
     lineas = ["Procedencia del modelo:"] + [f"  {k}: {v}" for k, v in _filas_procedencia(respuesta.modelo)]
+    if respuesta.supuestos:
+        lineas += [""] + lineas_supuestos(respuesta)
     if respuesta.advertencias:
         lineas += ["", "!" * 58] + [f"! {a}" for a in respuesta.advertencias] + ["!" * 58]
     return lineas

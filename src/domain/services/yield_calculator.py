@@ -1,7 +1,7 @@
 """
 Domain Service: CalculadoraRendimientoService (RB-002)
 """
-from typing import List
+from typing import List, Optional
 
 from ..models.agronomic_params import ParametrosAgronomicos
 from ..models.coffee_cherry import DeteccionFruto, EstadoMadurez
@@ -10,7 +10,10 @@ from ..models.yield_report import ReporteRendimiento
 
 class CalculadoraRendimientoService:
     @staticmethod
-    def calcular(detecciones: List[DeteccionFruto], parametros: ParametrosAgronomicos) -> ReporteRendimiento:
+    def calcular(detecciones: List[DeteccionFruto], parametros: ParametrosAgronomicos,
+                 factor_cereza_pergamino: Optional[float] = None) -> ReporteRendimiento:
+        """kg de café cereza = frutos × factor_oclusión × peso_medio_kg × (plantas_lote / plantas_muestra);
+        kg de pergamino = kg cereza × factor_cereza_pergamino (solo si se da el factor)."""
         total_frutos = len(detecciones)
         conteo = {estado: 0 for estado in EstadoMadurez}
         for det in detecciones:
@@ -32,5 +35,6 @@ class CalculadoraRendimientoService:
             conteo_por_estado=conteo,
             rendimiento_estimado_kg=round(rendimiento_kg, 3),
             parametros=parametros,
-            detecciones=detecciones
+            detecciones=detecciones,
+            rendimiento_pergamino_kg=None if factor_cereza_pergamino is None else round(rendimiento_kg * factor_cereza_pergamino, 3),
         )

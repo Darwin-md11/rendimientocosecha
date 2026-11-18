@@ -1,17 +1,18 @@
 """
 Application DTOs
 """
-from dataclasses import dataclass
-from typing import Any, Dict, List
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
 class SolicitudEstimacionDTO:
     imagen_bytes: bytes
-    peso_medio_fruto_g: float = 1.8
-    factor_oclusion: float = 1.25
-    plantas_muestra: int = 1
-    plantas_totales_lote: int = 2500
+    # None = usar el valor del catálogo agronómico (configs/agronomia.yaml), con su fuente
+    peso_medio_fruto_g: Optional[float] = None
+    factor_oclusion: Optional[float] = None
+    plantas_muestra: Optional[int] = None
+    plantas_totales_lote: Optional[int] = None
     umbral_confianza: float = 0.40
 
 @dataclass
@@ -23,7 +24,10 @@ class RespuestaEstimacionDTO:
     imagen_anotada_bytes: bytes
     detecciones_detalle: List[Dict[str, Any]]
     modelo: Dict[str, Any]  # ModeloInfo.como_dict(): qué modelo produjo este resultado
-    advertencias: List[str]  # vacía solo si el modelo está validado con datos reales
+    advertencias: List[str]  # del modelo y del rendimiento; vacía solo si todo está validado y con fuente
+    supuestos: List[Dict[str, Any]] = field(default_factory=list)  # factores usados, con valor, unidad y fuente
+    unidad_rendimiento: str = "kg de café cereza"
+    rendimiento_pergamino_kg: Optional[float] = None  # solo si el factor cereza→pergamino tiene valor y fuente
 
     @property
     def es_resultado_validado(self) -> bool:

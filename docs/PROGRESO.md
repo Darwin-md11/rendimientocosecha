@@ -8,12 +8,12 @@
 | Fase | Estado | Rama |
 |---|---|---|
 | 0 — Línea base, honestidad y orden del repo | ✔ código y pruebas listos; **pendiente:** Release del modelo y *push* | `fase-0-honestidad` |
-| 1 — Módulo de rendimiento (versión mínima) | pendiente (después de M2) | — |
+| 1 — Módulo de rendimiento (versión mínima) | ✔ factores con fuente en `configs/agronomia.yaml`, `TODO(fuente)` visible; **pendiente:** fuentes reales y unidad de muestreo | `fase-2-3-croppie-yolo` |
 | 2 — Datos (Croppie) | ✔ script de preparación listo; **pendiente:** ejecutarlo en Colab | `fase-2-3-croppie-yolo` |
 | 3 — M2 YOLO | ✔ entrenado (corrida `m2_yolo11n_640_s0_20261116-1754`); **pendiente:** evaluación propia en val, test final | `fase-2-3-croppie-yolo` |
 | 3 — M0 | ✔ script listo (RF y SVM, CV por sesión); **pendiente:** ejecutar en Colab (CPU) | `fase-2-3-croppie-yolo` |
-| 3 — M1 | ✔ script listo (MobileNetV2/EfficientNet-B0/ResNet-50, transfer learning); **pendiente:** ejecutar en Colab (GPU) | `fase-2-3-croppie-yolo` |
-| CUDA (requisito del curso) | ✔ kernel del descriptor de M0 + comparación CPU/GPU de YOLO; **pendiente:** ejecutar en Colab | `fase-2-3-croppie-yolo` |
+| 3 — M1 | ✔ entrenado (MobileNetV2, corrida `m1_mobilenetv2_96_s0_20261118-0456`); **pendiente:** test final | `fase-2-3-croppie-yolo` |
+| CUDA (requisito del curso) | ✔ ejecutado en T4: equivalencia OK, 43,6× (kernel vs mejor CPU); YOLO 7,8× | `fase-2-3-croppie-yolo` |
 | 4 — Evaluación | ✔ métricas comunes listas; tablas de M2 se generan al evaluar | `fase-2-3-croppie-yolo` |
 | 5–6 — Prototipo final y cierre | — | — |
 
@@ -105,3 +105,20 @@
 - Reporte de clasificación común para M0 y M1 (`ml/experiments/reporte_clasificacion.py`).
 - Alcance: M0 y M1 clasifican recortes de cajas reales (no detectan); se comparan con M2 por la clasificación en cajas
   emparejadas. El pipeline de dos etapas (localizador + clasificador) para usar M0/M1 en la app queda como trabajo futuro.
+
+### 2026-11-17/18 — Resultados de CUDA y M1 (Colab, T4; salidas pegadas por el equipo)
+
+- **CUDA, descriptor M0** (20 000 recortes reales de val, mediana de 3): primera corrida **falló la equivalencia** (HSV y
+  estadísticas): en la GPU `int(uint8)` es sin signo y las restas del tono daban la vuelta. Corregido (commit 90b5111) con prueba que lo reproduce.
+  Segunda corrida: **equivalencia OK** (HSV, Lab, LBP 100 % idénticos; estadísticas ≤ 1,4e-12; HOG ≤ 3,3e-16; 0 recortes con cambio de bin).
+  Tiempos: CPU recorte a recorte 1,888 ms; CPU por lotes 1,407 ms (28,1 s); GPU kernel 0,032 ms (0,645 s); GPU con copias 0,035 ms (0,707 s).
+  Aceleración: 58,6× (vs recorte a recorte), **43,6× (vs CPU por lotes)**, 39,8× con copias. La preparación de recortes en CPU
+  (5,9 s) domina de punta a punta (≈ 34 s → ≈ 6,6 s, ≈ 5×): ley de Amdahl. Compilación del kernel: 4,8 s (una vez).
+- **CUDA, YOLO** (200 imágenes de val, umbral 0,25, adaptador de la app): CPU 95,5 ms/imagen (mediana), GPU 12,2 ms → **7,8×**;
+  mismo conteo en el 100 % de las imágenes. CPU de Colab: 2 vCPU.
+- **M1** MobileNetV2 96 px (corrida `m1_mobilenetv2_96_s0_20261118-0456`, 9,6 min de entrenamiento): val exactitud 0,871, F1 macro 0,768;
+  F1 por clase: MADURO 0,930, VERDE 0,902, SOBREMADURO 0,682, PINTÓN 0,559 (precisión 0,459 / recall 0,715: los pesos por clase
+  favorecen el recall de las minoritarias). Mejor época = la última (mejora marginal). Optimista (época elegida en val).
+- Avisos de M1 (float(loss) y orden del planificador con AMP) corregidos después de esta corrida; no cambian los resultados de forma relevante.
+- Módulo de rendimiento mínimo: `configs/agronomia.yaml` (única fuente de valores por defecto), supuestos con fuente en la respuesta,
+  UI y CLI; pergamino solo con factor con fuente; `docs/modelo-rendimiento.md`.

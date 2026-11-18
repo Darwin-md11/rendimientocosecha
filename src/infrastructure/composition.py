@@ -17,6 +17,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
+from ..domain.models.supuestos import CatalogoSupuestos
 from ..domain.ports.fruit_detector_port import FruitDetectorPort
 from .adapters.detectors.mock_detector_adapter import MockFruitDetectorAdapter
 
@@ -53,3 +54,10 @@ def construir_detector(tipo: Optional[str] = None, ruta_modelo: Optional[Path] =
     # Si falla, ModeloNoDisponibleException sube con el motivo y como resolverlo.
     modelo = ModeloMadurezPixel.cargar(Path(ruta_modelo) if ruta_modelo else RUTA_MODELO_POR_DEFECTO)
     return MLFruitDetectorAdapter(modelo)
+
+
+def construir_catalogo(ruta: Optional[Path] = None) -> CatalogoSupuestos:
+    """Factores agronómicos con su fuente (configs/agronomia.yaml): única fuente de los valores por defecto."""
+    from .config.agronomia import cargar_catalogo
+
+    return cargar_catalogo(ruta)

@@ -15,7 +15,7 @@ from pathlib import Path
 from ....application.dtos.estimate_dto import SolicitudEstimacionDTO
 from ....application.use_cases.estimate_yield_use_case import AnalizarImagenCosechaUseCase
 from ....domain.exceptions.domain_exceptions import DomainException
-from ...composition import DETECTORES_DISPONIBLES, construir_detector
+from ...composition import DETECTORES_DISPONIBLES, construir_catalogo, construir_detector
 from .presentacion import lineas_cli
 
 IMAGEN_DEMO = Path(__file__).resolve().parents[4] / "assets" / "demo_sintetica.jpg"
@@ -25,10 +25,10 @@ def run_cli(argv=None) -> int:
     p = argparse.ArgumentParser(description="SIKAFE: estimacion de cosecha de cafe.")
     p.add_argument("--imagen", type=Path, help="foto del cafeto (si se omite, usa una escena sintetica)")
     p.add_argument("--detector", choices=[*DETECTORES_DISPONIBLES, "ml"], default=None)
-    p.add_argument("--peso-g", type=float, default=1.8, help="peso medio por cereza (g)")
-    p.add_argument("--oclusion", type=float, default=1.25, help="factor de oclusion (>= 1.0)")
-    p.add_argument("--plantas-muestra", type=int, default=1)
-    p.add_argument("--plantas-lote", type=int, default=2500)
+    p.add_argument("--peso-g", type=float, help="peso medio por cereza en g (por defecto: configs/agronomia.yaml)")
+    p.add_argument("--oclusion", type=float, help="factor de oclusion >= 1.0 (por defecto: configs/agronomia.yaml)")
+    p.add_argument("--plantas-muestra", type=int, help="plantas que cubren la foto (por defecto: configs/agronomia.yaml)")
+    p.add_argument("--plantas-lote", type=int, help="plantas del lote (por defecto: configs/agronomia.yaml)")
     p.add_argument("--umbral", type=float, default=0.40, help="umbral de confianza (0 a 1)")
     p.add_argument("--guardar-anotada", type=Path, help="ruta donde guardar la imagen con las detecciones")
     args = p.parse_args(argv)
@@ -48,7 +48,7 @@ def run_cli(argv=None) -> int:
         imagen_bytes = IMAGEN_DEMO.read_bytes()
 
     try:
-        use_case = AnalizarImagenCosechaUseCase(detector_adapter=construir_detector(args.detector))
+        use_case = AnalizarImagenCosechaUseCase(detector_adapter=construir_detector(args.detector), catalogo=construir_catalogo())
     except DomainException as e:
         print(f"Error al cargar el detector: {e}")
         return 1

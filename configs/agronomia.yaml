@@ -1,0 +1,54 @@
+# Factores para convertir el conteo de cerezas en rendimiento (kg de café cereza).
+#
+# Regla del proyecto: NINGÚN factor de literatura sin fuente. Si falta la fuente se deja `fuente: null`:
+# el reporte muestra "TODO(fuente)" y advierte que el rendimiento es solo indicativo.
+#   tipo: literatura -> debe salir de un documento (Cenicafé/FNC, artículo); solo cuenta la fuente de este archivo.
+#   tipo: dato       -> lo conoce el usuario (plantas del lote); si lo ingresa, cuenta como "ingresado por el usuario".
+#
+# Fórmula (ver docs/modelo-rendimiento.md):
+#   kg_cereza = frutos_detectados × factor_oclusion × (peso_medio_fruto_g / 1000) × (plantas_totales_lote / plantas_muestra)
+#   kg_pergamino = kg_cereza × factor_cereza_pergamino     (solo si ese factor tiene valor y fuente)
+
+salida: kg de café cereza
+validado_con_cosecha_real: false
+
+muestreo:
+  definido: false
+  supuesto: "Las fotos analizadas cubren completas las 'plantas_muestra' plantas (unidad de muestreo aún sin definir por el equipo)."
+
+factores:
+  peso_medio_fruto_g:
+    descripcion: Peso medio de una cereza de café
+    tipo: literatura
+    valor: 1.8
+    unidad: g
+    fuente: null            # TODO(fuente): valor heredado del prototipo, sin documento. Reemplazar con Cenicafé/FNC.
+    incertidumbre: null
+  factor_oclusion:
+    descripcion: Cerezas reales por cereza visible en la foto (>= 1)
+    tipo: literatura
+    valor: 1.25
+    unidad: adimensional
+    fuente: null            # TODO(fuente): debe calibrarse con conteo manual (cerezas reales / detectadas).
+    incertidumbre: null
+  plantas_muestra:
+    descripcion: Plantas que cubren las fotos analizadas
+    tipo: dato
+    valor: 1
+    unidad: plantas
+    fuente: null
+    incertidumbre: null
+  plantas_totales_lote:
+    descripcion: Plantas del lote
+    tipo: dato
+    valor: 2500
+    unidad: plantas
+    fuente: null            # valor de ejemplo: el usuario debe ingresar el de su lote
+    incertidumbre: null
+  factor_cereza_pergamino:
+    descripcion: Kilogramos de café pergamino seco por kilogramo de café cereza
+    tipo: literatura
+    valor: null             # sin valor ni fuente: el reporte NO calcula pergamino
+    unidad: kg pergamino / kg cereza
+    fuente: null
+    incertidumbre: null

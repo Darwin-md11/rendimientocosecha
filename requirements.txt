@@ -8,4 +8,5 @@ scikit-learn==1.9.1
 scikit-image>=0.21.0
 joblib>=1.2.0
 pandas>=1.5.0
+pyyaml>=6.0            # configs/agronomia.yaml
 gradio>=4.0.0
