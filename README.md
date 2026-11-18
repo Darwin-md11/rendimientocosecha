@@ -46,7 +46,28 @@ Selección de detector con `SIKAFE_DETECTOR` (o `--detector` en la CLI):
 | `sintetico` (por defecto si no hay YOLO; alias `ml`) | clasificador de píxeles + watershed | SINTÉTICO – NO VALIDADO |
 | `mock` | cajas aleatorias, ignora la imagen | SIMULADO – NO VALIDADO |
 
-Para usar YOLO: copie `m2_yolo.pt` y `m2_yolo.manifest.json` (salida del notebook) a `models/` e instale `pip install -r requirements-ml.txt`.
+### App con YOLO
+
+**Usarla** (cuando el manifiesto de M2 ya está en el repositorio):
+
+```bash
+pip install -r requirements.txt -r requirements-ml.txt   # ultralytics instala PyTorch (en Windows, la versión CPU: descarga grande)
+python scripts/descargar_modelo.py                       # baja todos los modelos de models/*.manifest.json y verifica el SHA-256
+python -m src.infrastructure.adapters.ui.gradio_app      # YOLO por defecto al existir models/m2_yolo.manifest.json
+```
+
+Velocidad medida en Colab: 95,5 ms por imagen en CPU y 12,2 ms en GPU T4 ([benchmark](docs/PROGRESO.md)); en otro PC variará.
+La app muestra en el banner que el modelo está **validado solo en otro dominio** (Croppie, Uganda), no en fincas de Norte de Santander.
+
+**Publicar el modelo** (una sola vez, equipo):
+
+1. Con la carpeta de la corrida oficial (`m2_yolo.pt` y `m2_yolo.manifest.json`, en Drive):
+   `python scripts/publicar_modelo_m2.py --corrida <carpeta>`. Comprueba hash, corrida oficial (`configs/informe.yaml`)
+   y evaluación final en test; escribe `models/m2_yolo.manifest.json` con la url de la Release `modelo-m2-v1`.
+2. En GitHub: Releases → *Draft a new release* → tag `modelo-m2-v1` → adjuntar `m2_yolo.pt` → *Publish release*.
+3. `git add models/m2_yolo.manifest.json` y commit. Los pesos **no** van a git.
+
+Demo sin instalar nada: celda 13 del cuaderno de Colab (`SIKAFE_COMPARTIR=1` abre un enlace público temporal de Gradio).
 
 Cada resultado incluye la **procedencia del modelo** (nombre, familia, versión, datos de entrenamiento,
 si fue validado con datos reales, SHA-256 de los pesos) y sus advertencias.
@@ -105,9 +126,9 @@ ml/                       EL LABORATORIO (Colab/Kaggle)
   experiments/            configs por corrida y registro de entorno
   notebooks/              notebook de Colab
   sintetico/, diagnosticos/
-configs/                  clases.yaml (mapeo de clases por dataset)
+configs/                  clases.yaml, agronomia.yaml (factores con fuente), informe.yaml (corridas oficiales)
 models/                   manifiestos de los modelos (los pesos se descargan)
-scripts/                  descarga de pesos con verificación
+scripts/                  descarga de pesos con verificación y publicación de M2
 docs/                     PROGRESO.md, decisiones (ADR), resultados
 tests/                    pruebas (incl. suite de contrato para detectores)
 ```

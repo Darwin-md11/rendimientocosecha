@@ -150,4 +150,7 @@ with gr.Blocks(title="SIKAFE - Dashboard Agronómico", theme=theme) as demo:
     )
 
 if __name__ == "__main__":
-    demo.launch()
+    import os
+
+    # SIKAFE_COMPARTIR=1 crea un enlace público temporal de Gradio (demo en Colab). Por defecto, solo local.
+    demo.launch(share=os.environ.get("SIKAFE_COMPARTIR") == "1")

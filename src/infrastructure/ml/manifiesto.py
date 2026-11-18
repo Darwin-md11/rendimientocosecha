@@ -48,7 +48,10 @@ def verificar_archivo(ruta_modelo, campos_obligatorios: Iterable[str] = ("sha256
     """Comprueba existencia, manifiesto y SHA-256. Devuelve (manifiesto, sha256). No deserializa nada."""
     ruta = Path(ruta_modelo)
     if not ruta.is_file():
-        raise ModeloNoDisponibleException(f"No existe el modelo {ruta}. Descárguelo (con verificación de hash) con: {COMANDO_DESCARGA}")
+        raise ModeloNoDisponibleException(
+            f"No existe el modelo {ruta}. Descárguelo (con verificación de hash) con: "
+            f"{COMANDO_DESCARGA} --manifiesto models/{ruta_manifiesto(ruta).name}"
+        )
     manifiesto = leer_manifiesto(ruta, campos_obligatorios)
     sha = sha256_archivo(ruta)
     if sha != manifiesto["sha256"]:

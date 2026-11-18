@@ -177,3 +177,13 @@ conteo R² 0,959 frente a las anotaciones. Pendiente para el jueves: tablas/figu
   difiere más de 0,01 de la registrada. Con 8 sesiones en test el IC por sesión es ancho y poco fiable: se reporta como orden de
   magnitud. M0/M1 sin IC (no se guardaron predicciones por recorte).
 - Pruebas: la AP ponderada equivale a repetir imágenes; sin remuestreo se reproducen exactamente las métricas registradas.
+
+### 2026-11-18 — App con YOLO
+
+- `scripts/publicar_modelo_m2.py`: copia los pesos de la corrida oficial a `models/` y escribe `models/m2_yolo.manifest.json` con la url
+  de la Release `modelo-m2-v1`. Falla si el hash no coincide (no se puede forzar), si la corrida no es la de `configs/informe.yaml` o si
+  falta la evaluación final (estas dos se pueden forzar y queda anotado). Licencia de los pesos: `TODO(fuente)` hasta `docs/legal.md`.
+- `scripts/descargar_modelo.py` sin argumentos baja y verifica **todos** los modelos de `models/`; el error de modelo ausente indica
+  el manifiesto concreto.
+- Gradio: `SIKAFE_COMPARTIR=1` abre un enlace público temporal (demo en Colab, celda 13); por defecto solo local.
+- Pendiente del equipo: crear la Release `modelo-m2-v1` con `m2_yolo.pt` y hacer commit del manifiesto.
