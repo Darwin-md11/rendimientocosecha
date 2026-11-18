@@ -1,4 +1,5 @@
 """El script de descarga verifica el SHA-256 y nunca deja un archivo sin verificar."""
+
 import hashlib
 import importlib.util
 import json
@@ -6,9 +7,7 @@ from pathlib import Path
 
 import pytest
 
-_spec = importlib.util.spec_from_file_location(
-    "descargar_modelo", Path(__file__).resolve().parents[1] / "scripts" / "descargar_modelo.py"
-)
+_spec = importlib.util.spec_from_file_location("descargar_modelo", Path(__file__).resolve().parents[1] / "scripts" / "descargar_modelo.py")
 descargar_modelo = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(descargar_modelo)
 
@@ -19,11 +18,16 @@ def _preparar(tmp_path, contenido=b"pesos de prueba", sha=None):
     destino_dir = tmp_path / "models"
     destino_dir.mkdir()
     manifiesto = destino_dir / "m.manifest.json"
-    manifiesto.write_text(json.dumps({
-        "archivo": "m.joblib",
-        "sha256": sha or hashlib.sha256(contenido).hexdigest(),
-        "url_descarga": origen.as_uri(),  # file:// evita depender de la red
-    }))
+    manifiesto.write_text(
+        json.dumps(
+            {
+                "archivo": "m.joblib",
+                "sha256": sha or hashlib.sha256(contenido).hexdigest(),
+                "url_descarga": origen.as_uri(),  # file:// evita depender de la red
+            }
+        ),
+        encoding="utf-8",
+    )
     return manifiesto, destino_dir / "m.joblib"
 
 

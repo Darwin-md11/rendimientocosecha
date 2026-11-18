@@ -3,8 +3,8 @@ Descarga los pesos de un modelo desde su URL de publicación (GitHub Release)
 y verifica su SHA-256 contra el manifiesto versionado en git.
 
 Uso (desde la raíz del repositorio):
-    python scripts/descargar_modelo.py                                   # modelo por defecto
-    python scripts/descargar_modelo.py --manifiesto models/otro.manifest.json
+    python scripts/descargar_modelo.py                                   # todos los modelos de models/*.manifest.json
+    python scripts/descargar_modelo.py --manifiesto models/m2_yolo.manifest.json
 
 Si el hash no coincide, el archivo descargado se borra y el script termina
 con error: nunca se deja en models/ un archivo sin verificar.
@@ -18,7 +18,7 @@ import urllib.request
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
-MANIFIESTO_POR_DEFECTO = RAIZ / "models" / "madurez_pixel.manifest.json"
+CARPETA_MODELOS = RAIZ / "models"
 
 
 def _sha256(ruta: Path) -> str:
@@ -66,10 +66,17 @@ def descargar(manifiesto_ruta: Path, url: str | None = None, timeout: float = 12
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--manifiesto", type=Path, default=MANIFIESTO_POR_DEFECTO)
-    p.add_argument("--url", help="sobrescribe la url_descarga del manifiesto")
+    p.add_argument("--manifiesto", type=Path, help="un solo modelo (por defecto: todos los de models/)")
+    p.add_argument("--url", help="sobrescribe la url_descarga del manifiesto (solo con --manifiesto)")
+    p.add_argument("--carpeta", type=Path, default=CARPETA_MODELOS, help=argparse.SUPPRESS)
     args = p.parse_args(argv)
-    descargar(args.manifiesto, args.url)
+    if args.url and not args.manifiesto:
+        p.error("--url exige --manifiesto")
+    manifiestos = [args.manifiesto] if args.manifiesto else sorted(args.carpeta.glob("*.manifest.json"))
+    if not manifiestos:
+        raise SystemExit(f"No hay manifiestos en {args.carpeta}")
+    for m in manifiestos:
+        descargar(m, args.url)
     return 0
 
 

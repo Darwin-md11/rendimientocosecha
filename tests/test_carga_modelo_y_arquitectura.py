@@ -3,7 +3,9 @@ Fase 0: falla rápida y segura al cargar modelos, y separación app (src/) / lab
 """
 import ast
 import json
+import re
 import shutil
+import sys
 from pathlib import Path
 
 import pytest
@@ -87,9 +89,9 @@ def test_composicion_no_reentrena_ni_cambia_de_detector(copia_modelo, monkeypatc
 
 
 # ------------------------------------------------------------ arquitectura
-def _modulos_importados(archivo: Path):
+def _modulos_importados(archivo: Path, solo_nivel_modulo: bool = False):
     arbol = ast.parse(archivo.read_text(encoding="utf-8"))
-    for nodo in ast.walk(arbol):
+    for nodo in arbol.body if solo_nivel_modulo else ast.walk(arbol):
         if isinstance(nodo, ast.Import):
             yield from (a.name for a in nodo.names)
         elif isinstance(nodo, ast.ImportFrom) and nodo.level == 0 and nodo.module:
@@ -112,7 +114,69 @@ def test_la_app_no_importa_librerias_de_entrenamiento_pesadas():
     infractores = [
         f"{archivo.relative_to(RAIZ)} -> {mod}"
         for archivo in (RAIZ / "src").rglob("*.py")
-        for mod in _modulos_importados(archivo)
+        for mod in _modulos_importados(archivo, solo_nivel_modulo=True)
         if mod.split(".")[0] in pesadas
     ]
     assert infractores == [], "use import diferido dentro del adaptador que lo necesite"
+
+
+def _es_texto_sin_encoding(archivo: Path):
+    for n in ast.walk(ast.parse(archivo.read_text(encoding="utf-8"))):
+        if not isinstance(n, ast.Call):
+            continue
+        kws = {k.arg for k in n.keywords}
+        f = n.func
+        nombre = f.attr if isinstance(f, ast.Attribute) else (f.id if isinstance(f, ast.Name) else None)
+        if "encoding" in kws:
+            continue
+        if nombre == "read_text" and not n.args:
+            yield n.lineno
+        elif nombre == "write_text" and len(n.args) < 2:
+            yield n.lineno
+        elif nombre == "open" and isinstance(f, ast.Name):
+            modo = n.args[1].value if len(n.args) > 1 and isinstance(n.args[1], ast.Constant) else "r"
+            if "b" not in str(modo):
+                yield n.lineno
+
+
+def test_toda_la_lectura_y_escritura_de_texto_declara_utf8():
+    """En Windows la codificación por defecto no es UTF-8 (cp1252): sin encoding explícito, las tildes se corrompen."""
+    infractores = [
+        f"{archivo.relative_to(RAIZ)}:{linea}"
+        for carpeta in ("src", "ml", "tests", "scripts")
+        for archivo in (RAIZ / carpeta).rglob("*.py")
+        for linea in _es_texto_sin_encoding(archivo)
+    ]
+    assert infractores == [], 'agregue encoding="utf-8"'
+
+
+# Se importan solo dentro de funciones y las pruebas los simulan (requirements-ml.txt / Colab).
+_OPCIONALES = {"torch", "torchvision", "ultralytics", "huggingface_hub", "google", "numba"}
+_PAQUETE = {"PIL": "pillow", "yaml": "pyyaml", "sklearn": "scikit-learn", "skimage": "scikit-image"}
+
+
+def _requisitos(archivo: Path) -> set:
+    salida = set()
+    for linea in archivo.read_text(encoding="utf-8").splitlines():
+        linea = linea.split("#")[0].strip()
+        if linea.startswith("-r "):
+            salida |= _requisitos(archivo.parent / linea[3:].strip())
+        elif linea:
+            salida.add(re.split(r"[<>=!~\[ ;]", linea, maxsplit=1)[0].lower())
+    return salida
+
+
+def test_toda_libreria_importada_esta_en_requirements_dev():
+    """Lo que el código y las pruebas importan debe instalarse con requirements-dev.txt (si no, falla en otro computador o en la CI)."""
+    declarados = _requisitos(RAIZ / "requirements-dev.txt")
+    propios = {"src", "ml", "contrato_detector", "test_preparar_yolo", "test_yolo_adapter", "test_m0_clasico", "conftest"}
+    faltan = set()
+    for carpeta in ("src", "ml", "tests", "scripts"):
+        for archivo in (RAIZ / carpeta).rglob("*.py"):
+            for mod in _modulos_importados(archivo):
+                top = mod.split(".")[0]
+                if top in sys.stdlib_module_names or top in propios or top in _OPCIONALES:
+                    continue
+                if _PAQUETE.get(top, top).lower() not in declarados:
+                    faltan.add(f"{top} ({archivo.relative_to(RAIZ)})")
+    assert not faltan, f"faltan en requirements-dev.txt: {sorted(faltan)}"

@@ -21,12 +21,13 @@ from src.application.dtos.estimate_dto import SolicitudEstimacionDTO
 from src.application.use_cases.estimate_yield_use_case import AnalizarImagenCosechaUseCase
 from src.domain.exceptions.domain_exceptions import DomainException
 from src.infrastructure.adapters.ui.presentacion import banner_markdown, mensaje_estado
-from src.infrastructure.composition import construir_detector
+from src.infrastructure.composition import construir_catalogo, construir_detector
 
 # Inyección de dependencias (Puerto de Salida -> Adaptador Detector).
 # Ver composition.py: si el modelo configurado no carga, falla aqui con un mensaje claro.
 detector_adapter = construir_detector()
-use_case = AnalizarImagenCosechaUseCase(detector_adapter=detector_adapter)
+catalogo = construir_catalogo()  # valores por defecto y fuentes: configs/agronomia.yaml
+use_case = AnalizarImagenCosechaUseCase(detector_adapter=detector_adapter, catalogo=catalogo)
 
 
 def _numero(valor, nombre, por_defecto=None):
@@ -118,11 +119,13 @@ with gr.Blocks(title="SIKAFE - Dashboard Agronómico", theme=theme) as demo:
             with gr.Group():
                 gr.Markdown("##### ⚙️ Parámetros Agronómicos")
                 with gr.Row():
-                    peso_g = gr.Number(value=1.8, label="Peso Medio (g)", info="Por cereza")
-                    oclusion = gr.Number(value=1.25, label="Factor Oclusión", info="≥ 1.0 (Sombras/Follaje)")
+                    peso_g = gr.Number(value=catalogo.valor("peso_medio_fruto_g"), label="Peso Medio (g)",
+                                       info=f"Por cereza · fuente: {catalogo.factores['peso_medio_fruto_g'].fuente_mostrada}")
+                    oclusion = gr.Number(value=catalogo.valor("factor_oclusion"), label="Factor Oclusión",
+                                         info=f"≥ 1.0 · fuente: {catalogo.factores['factor_oclusion'].fuente_mostrada}")
                 with gr.Row():
-                    plantas_muestra = gr.Number(value=1, label="Plantas Muestra", precision=0)
-                    plantas_totales = gr.Number(value=2500, label="Plantas Lote Total", precision=0)
+                    plantas_muestra = gr.Number(value=catalogo.valor("plantas_muestra"), label="Plantas Muestra", precision=0)
+                    plantas_totales = gr.Number(value=catalogo.valor("plantas_totales_lote"), label="Plantas Lote Total", precision=0)
 
                 umbral = gr.Slider(minimum=0.1, maximum=1.0, value=0.40, step=0.05, label="Umbral de Confianza IA")
 
@@ -135,7 +138,7 @@ with gr.Blocks(title="SIKAFE - Dashboard Agronómico", theme=theme) as demo:
             with gr.Row():
                 kpi_total = gr.Number(label="Total Cerezas", interactive=False)
                 kpi_madurez = gr.Number(label="Índice Madurez (%)", interactive=False)
-                kpi_yield = gr.Number(label="Rendimiento (kg)", interactive=False)
+                kpi_yield = gr.Number(label="Rendimiento potencial (kg café cereza)", interactive=False)
 
             output_image = gr.Image(type="pil", label="Detección de Objetos (Bounding Boxes)")
             output_df = gr.Dataframe(label="Desglose por Estado de Maduración", interactive=False)
@@ -147,4 +150,7 @@ with gr.Blocks(title="SIKAFE - Dashboard Agronómico", theme=theme) as demo:
     )
 
 if __name__ == "__main__":
-    demo.launch()
+    import os
+
+    # SIKAFE_COMPARTIR=1 crea un enlace público temporal de Gradio (demo en Colab). Por defecto, solo local.
+    demo.launch(share=os.environ.get("SIKAFE_COMPARTIR") == "1")

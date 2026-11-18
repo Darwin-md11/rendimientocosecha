@@ -16,6 +16,7 @@ from src.application.dtos.estimate_dto import SolicitudEstimacionDTO
 from src.application.use_cases.estimate_yield_use_case import AnalizarImagenCosechaUseCase
 from src.domain.models.coffee_cherry import BoundingBox, DeteccionFruto, EstadoMadurez
 from src.domain.models.modelo_info import FamiliaModelo, ModeloInfo
+from src.domain.models.supuestos import CALIBRACION, DATO, LITERATURA, CatalogoSupuestos, Supuesto
 from src.domain.ports.fruit_detector_port import FruitDetectorPort
 from src.infrastructure.adapters.detectors.mock_detector_adapter import MockFruitDetectorAdapter
 from src.infrastructure.adapters.ui import presentacion
@@ -23,6 +24,19 @@ from src.infrastructure.adapters.ui.cli_app import IMAGEN_DEMO, run_cli
 from src.infrastructure.composition import construir_detector
 
 RAIZ = Path(__file__).resolve().parents[1]
+
+# Catálogo con TODAS las fuentes y muestreo definido: solo así el rendimiento no genera advertencias.
+CATALOGO_COMPLETO = CatalogoSupuestos(
+    {
+        "peso_medio_fruto_g": Supuesto("peso_medio_fruto_g", "Peso medio", LITERATURA, 1.8, "g", "Fuente de prueba"),
+        "factor_oclusion": Supuesto("factor_oclusion", "Oclusión", CALIBRACION, 1.25, "adimensional", "Calibración de prueba"),
+        "plantas_muestra": Supuesto("plantas_muestra", "Plantas muestra", DATO, 1, "plantas", "protocolo de prueba"),
+        "plantas_totales_lote": Supuesto("plantas_totales_lote", "Plantas lote", DATO, 2500, "plantas", "censo de prueba"),
+    },
+    muestreo_definido=True,
+    validado_con_cosecha_real=True,
+    calibrado_localmente=True,
+)
 
 
 class DetectorValidadoFalso(FruitDetectorPort):
@@ -32,7 +46,10 @@ class DetectorValidadoFalso(FruitDetectorPort):
         return [DeteccionFruto("V001", EstadoMadurez.MADURO, 0.9, BoundingBox(1, 1, 10, 10))]
 
     def info(self):
-        return ModeloInfo("YOLO de prueba", FamiliaModelo.M2_YOLO, "t", "dataset ficticio", True, "a" * 64)
+        return ModeloInfo(
+            "YOLO de prueba", FamiliaModelo.M2_YOLO, "t", "dataset ficticio", True, "a" * 64,
+            dominio_validacion="fotos de prueba de la región", validado_en_dominio_objetivo=True,
+        )
 
 
 def _jpeg(tam=(200, 150)):
@@ -48,6 +65,13 @@ def test_modelo_sintetico_o_mock_no_puede_declararse_validado():
             ModeloInfo("x", familia, "1", "y", validado_con_datos_reales=True)
 
 
+def test_validado_en_la_region_no_lleva_advertencia_y_exige_validacion_real():
+    ok = ModeloInfo("m", FamiliaModelo.M2_YOLO, "1", "d", True, dominio_validacion="x", validado_en_dominio_objetivo=True)
+    assert ok.etiqueta is None and ok.advertencias == []
+    with pytest.raises(ValueError):
+        ModeloInfo("m", FamiliaModelo.M2_YOLO, "1", "d", False, validado_en_dominio_objetivo=True)
+
+
 def test_hash_debe_ser_sha256():
     with pytest.raises(ValueError):
         ModeloInfo("x", FamiliaModelo.M2_YOLO, "1", "y", False, hash_pesos_sha256="abc")
@@ -59,7 +83,7 @@ def test_hash_debe_ser_sha256():
         (FamiliaModelo.SINTETICO, False, "SINTÉTICO – NO VALIDADO"),
         (FamiliaModelo.MOCK, False, "SIMULADO – NO VALIDADO"),
         (FamiliaModelo.M2_YOLO, False, "NO VALIDADO CON DATOS REALES"),
-        (FamiliaModelo.M2_YOLO, True, None),
+        (FamiliaModelo.M2_YOLO, True, "VALIDADO SOLO EN OTRO DOMINIO"),
     ],
 )
 def test_etiqueta_y_advertencias_segun_procedencia(familia, validado, etiqueta):
@@ -92,7 +116,7 @@ def test_respuesta_incluye_procedencia_y_advertencia():
 
 
 def test_modelo_validado_no_genera_advertencias():
-    r = AnalizarImagenCosechaUseCase(DetectorValidadoFalso()).ejecutar(SolicitudEstimacionDTO(imagen_bytes=_jpeg()))
+    r = AnalizarImagenCosechaUseCase(DetectorValidadoFalso(), CATALOGO_COMPLETO).ejecutar(SolicitudEstimacionDTO(imagen_bytes=_jpeg()))
     assert r.advertencias == [] and r.es_resultado_validado
 
 
@@ -109,9 +133,9 @@ def test_imagen_anotada_lleva_franja_de_aviso_solo_si_no_esta_validado():
 def test_mensaje_de_estado_nunca_es_ok_si_no_esta_validado():
     r = AnalizarImagenCosechaUseCase(MockFruitDetectorAdapter(5)).ejecutar(SolicitudEstimacionDTO(imagen_bytes=_jpeg()))
     msg = presentacion.mensaje_estado(r)
-    assert "✅" not in msg and "NO VALIDADO" in msg and r.advertencias[0] in msg
+    assert "✅" not in msg and "NO está validado" in msg and r.advertencias[0] in msg
 
-    r_ok = AnalizarImagenCosechaUseCase(DetectorValidadoFalso()).ejecutar(SolicitudEstimacionDTO(imagen_bytes=_jpeg()))
+    r_ok = AnalizarImagenCosechaUseCase(DetectorValidadoFalso(), CATALOGO_COMPLETO).ejecutar(SolicitudEstimacionDTO(imagen_bytes=_jpeg()))
     assert presentacion.mensaje_estado(r_ok).startswith("✅")
 
 
@@ -142,4 +166,9 @@ def test_gradio_muestra_advertencia(monkeypatch):
     from src.infrastructure.adapters.ui import gradio_app
 
     salida = gradio_app.procesar_estimacion(Image.new("RGB", (200, 150)), 1.8, 1.25, 1, 2500, 0.4)
-    assert "✅" not in salida[1] and "NO VALIDADO" in salida[1]
+    assert "✅" not in salida[1] and "NO está validado" in salida[1]
+
+
+def test_modelo_validado_pero_rendimiento_sin_fuentes_no_es_ok():
+    r = AnalizarImagenCosechaUseCase(DetectorValidadoFalso()).ejecutar(SolicitudEstimacionDTO(imagen_bytes=_jpeg()))
+    assert any("TODO(fuente)" in a for a in r.advertencias) and "✅" not in presentacion.mensaje_estado(r)

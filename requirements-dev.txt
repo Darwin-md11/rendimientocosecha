@@ -1,4 +1,8 @@
 # Desarrollo y CI: pruebas y lint.
+# Incluye lo que las pruebas usan del laboratorio (ml/): pyyaml y matplotlib (figuras del informe).
+# ultralytics/torch NO: las pruebas los simulan; se instalan con requirements-ml.txt.
 -r requirements.txt
 pytest>=7.0.0
 ruff>=0.6.0
+pyyaml>=6.0
+matplotlib>=3.7

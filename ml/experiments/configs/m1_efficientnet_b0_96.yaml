@@ -1,0 +1,14 @@
+# M1 – EfficientNet-B0 preentrenada en ImageNet (transfer learning), recortes de 96 px.
+nombre: m1_efficientnet_b0_96
+arquitectura: efficientnet_b0
+preentrenado: true
+lado: 96            # las cerezas miden ~55–75 px en los recortes de 640: 96 px conserva el detalle sin ampliar mucho
+epocas_cabeza: 2    # etapa 1: red congelada, solo la cabeza
+epocas: 10          # etapa 2: toda la red, decaimiento coseno
+batch: 256
+lr_cabeza: 0.001
+lr: 0.0003
+weight_decay: 0.0001
+semilla: 0
+workers: 2
+amp: true           # precisión mixta en la GPU

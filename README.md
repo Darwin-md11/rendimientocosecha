@@ -7,7 +7,8 @@ Arquitectura hexagonal (puertos y adaptadores). Metodología CRISP-DM.
 > ⚠️ **Estado actual:** el único modelo incluido se entrenó **solo con escenas sintéticas** y está etiquetado
 > **"SINTÉTICO – NO VALIDADO"**. En fotos sin café detecta de 19 a 32 "cerezas"
 > ([diagnóstico](docs/resultados/diagnostico-sintetico.md)). La UI y la CLI lo advierten en cada resultado.
-> Los modelos con datos reales (M0, M1, M2) están en desarrollo: ver [docs/PROGRESO.md](docs/PROGRESO.md).
+> El detector con fotos reales (**M2, YOLO entrenado con el dataset Croppie**) está listo para entrenarse en Colab:
+> [`ml/notebooks/m2_yolo_colab.ipynb`](ml/notebooks/m2_yolo_colab.ipynb). Estado en [docs/PROGRESO.md](docs/PROGRESO.md).
 
 ## Instalación
 
@@ -57,8 +58,32 @@ Selección de detector con `SIKAFE_DETECTOR` (o `--detector` en la CLI):
 
 | Valor | Detector | Procedencia |
 |---|---|---|
-| `sintetico` (por defecto; alias `ml`) | clasificador de píxeles + watershed | SINTÉTICO – NO VALIDADO |
+| `yolo` (por defecto si existe `models/m2_yolo.manifest.json`) | M2: YOLO entrenado con fotos reales (Croppie) | la de su manifiesto (p. ej. "VALIDADO SOLO EN OTRO DOMINIO") |
+| `sintetico` (por defecto si no hay YOLO; alias `ml`) | clasificador de píxeles + watershed | SINTÉTICO – NO VALIDADO |
 | `mock` | cajas aleatorias, ignora la imagen | SIMULADO – NO VALIDADO |
+
+### App con YOLO
+
+**Usarla** (cuando el manifiesto de M2 ya está en el repositorio):
+
+```bash
+pip install -r requirements.txt -r requirements-ml.txt   # ultralytics instala PyTorch (en Windows, la versión CPU: descarga grande)
+python scripts/descargar_modelo.py                       # baja todos los modelos de models/*.manifest.json y verifica el SHA-256
+python -m src.infrastructure.adapters.ui.gradio_app      # YOLO por defecto al existir models/m2_yolo.manifest.json
+```
+
+Velocidad medida en Colab: 95,5 ms por imagen en CPU y 12,2 ms en GPU T4 ([benchmark](docs/PROGRESO.md)); en otro PC variará.
+La app muestra en el banner que el modelo está **validado solo en otro dominio** (Croppie, Uganda), no en fincas de Norte de Santander.
+
+**Publicar el modelo** (una sola vez, equipo):
+
+1. Con la carpeta de la corrida oficial (`m2_yolo.pt` y `m2_yolo.manifest.json`, en Drive):
+   `python scripts/publicar_modelo_m2.py --corrida <carpeta>`. Comprueba hash, corrida oficial (`configs/informe.yaml`)
+   y evaluación final en test; escribe `models/m2_yolo.manifest.json` con la url de la Release `modelo-m2-v1`.
+2. En GitHub: Releases → *Draft a new release* → tag `modelo-m2-v1` → adjuntar `m2_yolo.pt` → *Publish release*.
+3. `git add models/m2_yolo.manifest.json` y commit. Los pesos **no** van a git.
+
+Demo sin instalar nada: celda 13 del cuaderno de Colab (`SIKAFE_COMPARTIR=1` abre un enlace público temporal de Gradio).
 
 Cada resultado incluye la **procedencia del modelo** (nombre, familia, versión, datos de entrenamiento,
 si fue validado con datos reales, SHA-256 de los pesos) y sus advertencias.
@@ -85,6 +110,20 @@ python -m ml.sintetico.training --imagenes datos/     # + fotos con máscara fot
 python ml/diagnosticos/diagnostico_detector_ml.py     # robustez y falsos positivos
 ```
 
+## Laboratorio: datos, entrenamiento y evaluación de M2
+
+```bash
+python -m ml.datos.preparar_yolo --origen <croppie_raw> --inspeccionar
+python -m ml.datos.preparar_yolo --origen <croppie_raw> --destino <sikafe_yolo> --dataset croppie --semilla 0
+python -m ml.m2_yolo.entrenar --config ml/experiments/configs/m2_yolo11n_640.yaml --datos <sikafe_yolo>/data.yaml --salida <corridas>
+python -m ml.m2_yolo.evaluar --corrida <corridas>/<id> --split val
+python -m ml.m2_yolo.evaluar --corrida <corridas>/<id> --split test --final     # una sola vez
+```
+
+Las métricas (mAP@0,5, mAP@0,5:0,95, P/R/F1, matriz de confusión, MAE/RMSE/R² de conteo, tiempo) salen de
+`src/evaluation/metricas.py`, común a todos los modelos ([ADR-007](docs/decisiones/ADR-007-metricas-comunes.md)).
+Datasets y licencias: [docs/datasets.md](docs/datasets.md).
+
 ## Estructura
 
 ```
@@ -92,13 +131,20 @@ src/                      LA APP (dependencias livianas)
   domain/                 modelos (incl. ModeloInfo), puertos, servicio de rendimiento, excepciones
   application/            caso de uso AnalizarImagenCosechaUseCase y DTOs
   infrastructure/
-    adapters/detectors/   sintético (MLFruitDetectorAdapter), mock
+    adapters/detectors/   YOLO (M2), sintético (MLFruitDetectorAdapter), mock
     adapters/ui/          CLI, Gradio y textos de presentación
     ml/                   características y carga verificada del modelo
     composition.py        único lugar que decide qué detector se inyecta
-ml/                       EL LABORATORIO (entrenamiento, datos, diagnósticos; Colab/Kaggle)
+  evaluation/             métricas comunes (numpy)
+ml/                       EL LABORATORIO (Colab/Kaggle)
+  datos/                  preparación de datasets YOLO (mapeo, partición por grupo, fuga, EDA)
+  m2_yolo/                entrenamiento y evaluación de YOLO
+  experiments/            configs por corrida y registro de entorno
+  notebooks/              notebook de Colab
+  sintetico/, diagnosticos/
+configs/                  clases.yaml, agronomia.yaml (factores con fuente), informe.yaml (corridas oficiales)
 models/                   manifiestos de los modelos (los pesos se descargan)
-scripts/                  descarga de pesos con verificación
+scripts/                  descarga de pesos con verificación y publicación de M2
 docs/                     PROGRESO.md, decisiones (ADR), resultados
 tests/                    pruebas (incl. suite de contrato para detectores)
 ```

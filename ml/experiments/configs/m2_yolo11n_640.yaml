@@ -1,0 +1,11 @@
+# M2 – YOLO11n, entrada 640 px (experimento (a) y línea base del experimento (c)).
+nombre: m2_yolo11n_640
+modelo_base: yolo11n.pt      # preentrenado en COCO (transfer learning)
+imgsz: 640
+epochs: 60
+patience: 15                 # parada temprana sobre val
+batch: 16                    # T4 de Colab; bajar a 8 si falta memoria
+semilla: 0
+workers: 2
+iou_nms: 0.6                 # NMS en inferencia (racimos densos: no subir de 0.7)
+conf_reporte: 0.25           # umbral para P/R/F1 y conteo

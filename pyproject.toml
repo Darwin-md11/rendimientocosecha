@@ -5,9 +5,9 @@ description = "Detección, conteo y clasificación por madurez de cerezas de caf
 requires-python = ">=3.10"
 
 [tool.ruff]
-line-length = 130
+line-length = 150
 target-version = "py310"
-extend-exclude = [".venv", "venv"]
+extend-exclude = [".venv", "venv", "*.ipynb"]
 
 [tool.ruff.lint]
 # Errores reales (pyflakes, pycodestyle) e imports ordenados. Se puede endurecer más adelante.
@@ -19,3 +19,5 @@ known-first-party = ["src", "ml"]
 [tool.ruff.lint.per-file-ignores]
 # gradio_app ajusta sys.path antes de importar (permite ejecutarlo como script); tabla de madurez en líneas largas.
 "src/infrastructure/adapters/ui/gradio_app.py" = ["E402", "E501"]
+# Laboratorio: tablas de reporte y diccionarios de métricas en líneas largas.
+"ml/**" = ["E501"]

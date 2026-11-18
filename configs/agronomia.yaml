@@ -1,0 +1,69 @@
+# Factores para convertir el conteo de cerezas en rendimiento.
+#
+# Regla del proyecto: NINGÚN factor sin fuente. Si falta la fuente se deja `fuente: null` y el reporte lo advierte.
+#   tipo: literatura  -> sale de un documento; solo cuenta la fuente de este archivo (no un valor escrito por el usuario).
+#   tipo: calibracion -> no existe valor bibliográfico: se mide en campo (conteo manual vs automático). Mientras tanto, valor neutro.
+#   tipo: dato        -> lo conoce el usuario (plantas del lote); si lo ingresa, cuenta como "ingresado por el usuario".
+#
+# Fórmulas (docs/modelo-rendimiento.md):
+#   kg_cereza    = cerezas × factor_oclusion × (peso_medio_fruto_g / 1000) × (plantas_totales_lote / plantas_muestra)
+#   kg_pergamino = kg_cereza × factor_cereza_pergamino
+#   "Listo para cosechar": las mismas fórmulas solo con las cerezas de `estados_cosechables`.
+# Investigación de respaldo: docs/investigacion/parametros_agronomicos_cenicafe.md (equipo, consulta 2026-11-18).
+
+version_parametros: "2026-11-18"
+salida: kg de café cereza
+validado_con_cosecha_real: false
+calibrado_localmente: false
+
+estados_cosechables: [MADURO, SOBREMADURO]
+fuente_estados_cosechables: "Cenicafé (2004), Cartilla 19: Recolección del café (recomienda recolectar frutos maduros)"
+
+muestreo:
+  definido: false
+  supuesto: "Las fotos analizadas cubren completas las 'plantas_muestra' plantas (unidad de muestreo aún sin definir por el equipo)."
+
+# Simplificaciones que se advierten en cada resultado
+simplificaciones:
+  - "Se usa un único peso por cereza y un único factor de conversión para todos los estados de madurez; la conversión cereza→pergamino varía mucho con la madurez (Marín-López et al., 2003) y un fruto sobremaduro pesa en promedio 12 % menos que uno maduro (Sanz-Uribe et al., 2018)."
+  - "Los parámetros provienen de café variedad Colombia en Caldas (cosecha 2005-II); el detector se entrenó con fotos de Uganda (Croppie). Ninguno está calibrado para Norte de Santander."
+
+factores:
+  peso_medio_fruto_g:
+    descripcion: Peso medio de una cereza de café
+    tipo: literatura
+    valor: 1.85
+    unidad: g
+    fuente: "Montilla-Pérez et al. (2008), Cenicafé 59(2):120-142, Tabla 17 (café sin seleccionar)"
+    incertidumbre: "Variedad Colombia, Caldas, cosecha 2005-II. Muestra seleccionada (madura, sin defectos): 1,99 g; Uribe (1977): 2,00 g."
+    estado: referencia bibliográfica, pendiente de calibración local
+  factor_oclusion:
+    descripcion: Corrección por cerezas ocultas (cerezas reales por cereza visible)
+    tipo: calibracion
+    valor: 1.0                # 1,0 = sin corrección. No hay valor bibliográfico: requiere conteo manual en campo.
+    unidad: adimensional
+    fuente: null
+    incertidumbre: null
+    estado: pendiente de calibración con conteo manual (no se corrige)
+  plantas_muestra:
+    descripcion: Plantas que cubren las fotos analizadas
+    tipo: dato
+    valor: 1
+    unidad: plantas
+    fuente: null
+    incertidumbre: null
+  plantas_totales_lote:
+    descripcion: Plantas del lote
+    tipo: dato
+    valor: 2500
+    unidad: plantas
+    fuente: null            # valor de ejemplo: el usuario debe ingresar el de su lote
+    incertidumbre: null
+  factor_cereza_pergamino:
+    descripcion: Kilogramos de café pergamino seco por kilogramo de café cereza
+    tipo: literatura
+    valor: 0.20
+    unidad: kg pergamino seco / kg cereza
+    fuente: "Montilla-Pérez et al. (2008), Cenicafé 59(2):120-142, Tabla 20"
+    incertidumbre: "Aproximado: relaciones cereza:pergamino 4,94 (seleccionado) y 4,89 (sin seleccionar) → 0,202-0,205; humedad del pergamino 10,6-12,0 %. Uribe (1977): 0,22."
+    estado: referencia bibliográfica, pendiente de calibración local

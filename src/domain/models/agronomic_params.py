@@ -6,8 +6,9 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class ParametrosAgronomicos:
-    peso_medio_fruto_g: float = 1.8
-    factor_oclusion: float = 1.25
+    # Respaldo SIN fuentes si no se inyecta un catálogo; los valores de la app vienen de configs/agronomia.yaml
+    peso_medio_fruto_g: float = 1.85
+    factor_oclusion: float = 1.0
     plantas_muestra: int = 1
     plantas_totales_lote: int = 2500
 
