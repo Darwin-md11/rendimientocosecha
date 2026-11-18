@@ -5,7 +5,7 @@
 
 | Dataset | Fuente | Licencia | Imágenes / instancias | Clases originales | Uso en SIKAFE | Consultado |
 |---|---|---|---|---|---|---|
-| **Croppie** | https://huggingface.co/datasets/rgautroncgiar/croppie_coffee_ug | CC BY-SA 4.0 | 633 fotos originales (celular, fincas pequeñas, Arábica y Robusta) con ~61 050 cajas; publicado como 5 836 recortes de entrenamiento + 2 497 de validación de 480×640 | dark_brown, green, low_visibility_unsure, red, yellow | **M2 (en curso)**: train/val/test 70/15/15 por foto original | 2026-11-15 |
+| **Croppie** | https://huggingface.co/datasets/rgautroncgiar/croppie_coffee_ug | CC BY-SA 4.0 | 633 fotos originales (celular, fincas pequeñas, Arábica y Robusta) con ~61 050 cajas; publicado como 5 836 recortes de entrenamiento + 2 497 de validación de 480×640 | dark_brown, green, low_visibility_unsure, red, yellow | **M0, M1 y M2**: train/val/test 70/15/15 por sesión de captura (en la preparación se identificaron 1 262 fotos originales por su marca de tiempo, agrupadas en 60 sesiones; ver `docs/PROGRESO.md`) | 2026-11-15 |
 | coffee_cherry (CarlosMM) | https://universe.roboflow.com/carlosmm/coffee_cherry-wd4iy | CC BY 4.0 (según la página) | `TODO(fuente)` | madura, semimadura, sobremadura, verde | candidato: evaluación entre dominios | 2026-11-15 (página no accesible desde la sesión) |
 | Coffee and Cashew Nut (Sanya et al.) | https://data.mendeley.com/datasets/r46c6bpfpf/1 (DOI 10.17632/r46c6bpfpf.1) | `TODO(fuente)` | 3 000 imágenes de café (dron) | unripe, ripening, ripe, spoilt, coffee_tree | candidato (dominio distinto: dron) | 2026-11-15 |
 
