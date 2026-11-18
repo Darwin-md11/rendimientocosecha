@@ -14,6 +14,7 @@ Salida: <salida>/informe_resultados.md, <salida>/figuras/*.png, <salida>/tablas.
 import argparse
 import csv
 import json
+import re
 import shutil
 from pathlib import Path
 
@@ -39,6 +40,18 @@ def _f(v, d=3):
     return "—" if v is None or (isinstance(v, float) and np.isnan(v)) else f"{v:.{d}f}".replace(".", ",")
 
 
+_NUMERO_CON_PUNTO = re.compile(r"(?<![\w.])(\d+)\.(\d+)(?=e[-+]\d|(?![\w.]))")
+
+
+def coma_decimal(texto: str) -> str:
+    """1.5 -> 1,5 y 1.39e-12 -> 1,39e-12; no toca versiones (0.64.0), plataformas (glibc2.39) ni identificadores."""
+    return _NUMERO_CON_PUNTO.sub(r"\1,\2", texto)
+
+
+def _num(v) -> str:
+    return "—" if v is None else f"{v:g}".replace(".", ",")
+
+
 def _plt():
     try:
         import matplotlib
@@ -62,8 +75,10 @@ def seccion_datos(datos_yaml: Path, figuras: Path) -> str:
     filas = []
     for s, d in st.items():
         cajas = d["cajas"]
-        pct = " | ".join(f"{d['cajas_por_clase'][c]} ({100 * d['cajas_por_clase'][c] / max(cajas, 1):.1f} %)" for c in NOMBRES)
-        filas.append(f"| {s} | {d['imagenes']} ({100 * d['imagenes'] / total_img:.1f} %) | {est['grupos_por_split'].get(s, '—')} | {cajas} | {pct} |")
+        pct = " | ".join(f"{d['cajas_por_clase'][c]} ({_f(100 * d['cajas_por_clase'][c] / max(cajas, 1), 1)} %)" for c in NOMBRES)
+        filas.append(
+            f"| {s} | {d['imagenes']} ({_f(100 * d['imagenes'] / total_img, 1)} %) | {est['grupos_por_split'].get(s, '—')} | {cajas} | {pct} |"
+        )
     ag = est.get("agrupamiento", {})
     plt = _plt()
     if plt:
@@ -131,7 +146,7 @@ def seccion_modelos(cfg: dict, base: Path, figuras: Path) -> str:
         conf, t = _yaml(c / "config.yaml") or {}, _json(c / "tiempos.json") or {}
         filas.append(
             f"| {cfg['etiquetas'][k]} | {conf.get('arquitectura')} {'preentrenada (ImageNet)' if conf.get('preentrenado', True) else 'sin preentrenar'}, "
-            f"{conf.get('lado')} px | {conf.get('epocas_cabeza')} épocas cabeza + {conf.get('epocas')} ajuste; AdamW, lr {conf.get('lr')}; "
+            f"{conf.get('lado')} px | {conf.get('epocas_cabeza')} épocas cabeza + {conf.get('epocas')} ajuste; AdamW, lr {_num(conf.get('lr'))}; "
             f"pesos por clase{'; AMP' if conf.get('amp') else ''} | {_f(t.get('entrenamiento_s', 0) / 60, 1)} min ({'GPU' if t.get('gpu') else 'CPU'}) |"
         )
     if plt:
@@ -154,7 +169,7 @@ def seccion_modelos(cfg: dict, base: Path, figuras: Path) -> str:
     t2, res = _tiempo_m2(c)
     filas.append(
         f"| {cfg['etiquetas']['m2'].split(' (')[0]} | {conf.get('modelo_base')} (preentrenado COCO), {conf.get('imgsz')} px | "
-        f"{conf.get('epochs')} épocas, paciencia {conf.get('patience')}, batch {conf.get('batch')}; NMS agnóstico (iou {conf.get('iou_nms')}) | "
+        f"{conf.get('epochs')} épocas, paciencia {conf.get('patience')}, batch {conf.get('batch')}; NMS agnóstico (IoU {_num(conf.get('iou_nms'))}) | "
         f"{_f(t2 / 3600, 2) + ' h' if t2 else '—'} ({ent.get('gpu') or 'GPU'}) |"
     )
     if plt and res:
@@ -319,7 +334,7 @@ percentil es poco fiable: léase como orden de magnitud de la incertidumbre.
     for nombre in cfg.get("benchmarks", []):
         ruta = Path(benchmarks) / nombre if benchmarks else None
         if ruta and ruta.is_file():
-            bench.append(ruta.read_text(encoding="utf-8").replace("# ", "#### ", 1))
+            bench.append(coma_decimal(ruta.read_text(encoding="utf-8")).replace("# ", "#### ", 1))
     return f"""## 8.4 Evaluación
 
 Partición de prueba evaluada **una sola vez** con los modelos congelados. Métricas comunes (`src/evaluation/metricas.py`).
@@ -354,15 +369,30 @@ Figuras: `figuras/8_4_f1_por_clase.png`, `figuras/8_4_matriz_confusion_*.png`, `
 """
 
 
+def _hardware_entrenamiento(clave: str, corrida: Path, ent: dict) -> str:
+    """Dónde entrenó el modelo (no solo qué GPU había en el entorno)."""
+    gpu = ent.get("gpu")
+    if clave.startswith("m0"):
+        disp = ((_yaml(corrida / "config.yaml") or {}).get("dispositivo_descriptor") or "cpu").upper()
+        base = "CPU (scikit-learn)" + ("" if disp == "CPU" else f"; descriptor en {disp}")
+        return base + (f"; {gpu} disponible, no usada para entrenar" if gpu and disp == "CPU" else "")
+    if clave.startswith("m1"):
+        usa_gpu = (_json(corrida / "tiempos.json") or {}).get("gpu")
+        return f"GPU {gpu}" if usa_gpu and gpu else ("GPU" if usa_gpu else "CPU")
+    return f"GPU {gpu}" if gpu else "CPU"
+
+
 def _trazabilidad(cfg: dict, base: Path) -> str:
     filas = []
     for k, id_ in cfg["corridas"].items():
         ent = _json(base / id_ / "entorno.json") or {}
         git = ent.get("git") or {}
         filas.append(
-            f"| {cfg['etiquetas'][k]} | `{id_}` | `{(git.get('commit') or '—')[:10]}` | `{(ent.get('version_dataset_sha256') or '—')[:12]}` | {ent.get('gpu') or 'CPU'} |"
+            f"| {cfg['etiquetas'][k]} | `{id_}` | `{(git.get('commit') or '—')[:10]}` | `{(ent.get('version_dataset_sha256') or '—')[:12]}` | "
+            f"{_hardware_entrenamiento(k, base / id_, ent)} |"
         )
-    return "## Trazabilidad\n\n| Modelo | Corrida | Commit | Dataset | Hardware |\n|---|---|---|---|---|\n" + "\n".join(filas) + "\n"
+    cab = "| Modelo | Corrida | Commit | Dataset | Entrenamiento en |\n|---|---|---|---|---|\n"
+    return "## Trazabilidad\n\n" + cab + "\n".join(filas) + "\n"
 
 
 def generar(

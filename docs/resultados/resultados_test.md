@@ -56,4 +56,25 @@ el **F1 macro** es la métrica de comparación.
 - **Conteo:** R² frente a las cajas anotadas, no frente a un conteo manual en campo; el rendimiento en kg no está validado.
 - **Comparación de mAP:** la mAP propia (0,603) usa NMS agnóstico (una etiqueta por cereza, lo que exige el conteo); Ultralytics, con
   NMS por clase, reportó 0,673 en validación. Se informa la propia como cifra principal (ADR-007).
-- Una sola semilla por configuración y sin intervalos de confianza (tiempo de cómputo). M0 entrenado con 30 000 recortes submuestreados.
+- Una sola semilla por configuración (tiempo de cómputo). M0 entrenado con 30 000 recortes submuestreados.
+- Intervalos de confianza: solo para M2 (sección 5). M0 y M1 no guardaron sus predicciones por recorte.
+
+## 5. Intervalos de confianza de M2 (IC 95 %)
+
+Fuente: `python -m ml.informe.generar` (celda 14, 2026-11-18), con bootstrap percentil, 2000 remuestreos y semilla 0. Se recalcularon
+desde `predicciones_test.jsonl`, sin volver a ejecutar el modelo. El remuestreo **por sesiones** es el más honesto, pero con solo 8
+sesiones el intervalo es poco fiable: léase como orden de magnitud.
+
+| Métrica | Valor | IC por imágenes | IC por sesiones |
+|---|---|---|---|
+| mAP@0,5 | 0,603 | 0,582–0,627 | 0,555–0,658 |
+| AP@0,5 PINTÓN | 0,257 | 0,217–0,301 | 0,213–0,372 |
+| F1 con clase (conf. 0,25) | 0,809 | 0,794–0,823 | 0,782–0,836 |
+| F1 macro en cerezas localizadas | 0,776 | 0,757–0,794 | 0,739–0,817 |
+| Conteo: MAE (cerezas/imagen) | 1,924 | 1,634–2,235 | 1,441–2,242 |
+| Conteo: R² frente al conteo anotado | 0,959 | 0,948–0,969 | 0,947–0,971 |
+
+Lectura:
+- **La meta de mAP@0,5 ≥ 0,80 queda fuera incluso del extremo superior del intervalo** (0,658).
+- **La meta de R² ≥ 0,80 se cumple con margen frente a las anotaciones.**
+- **No se puede afirmar que M2 clasifique mejor que M1.** El intervalo del F1 macro de M2 (0,739–0,817) contiene el 0,744 de M1, y la métrica de M2 tiene sesgo de selección.

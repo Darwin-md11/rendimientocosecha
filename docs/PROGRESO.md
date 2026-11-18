@@ -7,15 +7,14 @@
 
 | Fase | Estado | Rama |
 |---|---|---|
-| 0 — Línea base, honestidad y orden del repo | ✔ código y pruebas listos; **pendiente:** Release del modelo y *push* | `fase-0-honestidad` |
-| 1 — Módulo de rendimiento | ✔ parámetros de Cenicafé (1,85 g; 0,20) con fuente, oclusión sin calibrar, potencial y listo para cosechar (ADR-010); **pendiente:** calibración local y unidad de muestreo | `fase-2-3-croppie-yolo` |
-| 2 — Datos (Croppie) | ✔ script de preparación listo; **pendiente:** ejecutarlo en Colab | `fase-2-3-croppie-yolo` |
-| 3 — M2 YOLO | ✔ entrenado y evaluado en test (mAP@0,5 0,603; conteo R² 0,959) | `fase-2-3-croppie-yolo` |
-| 3 — M0 | ✔ entrenado y evaluado en test (F1 macro RF 0,633, SVM 0,659) | `fase-2-3-croppie-yolo` |
-| 3 — M1 | ✔ entrenado y evaluado en test (F1 macro 0,744; sin preentrenar 0,690) | `fase-2-3-croppie-yolo` |
-| CUDA (requisito del curso) | ✔ ejecutado en T4: equivalencia OK, 43,6× (kernel vs mejor CPU); YOLO 7,8× | `fase-2-3-croppie-yolo` |
-| 4 — Evaluación | ✔ test final de los 5 modelos (una vez, 2026-11-18): `docs/resultados/resultados_test.md` | `fase-2-3-croppie-yolo` |
-| 5–6 — Prototipo final y cierre | — | — |
+| 0 — Línea base, honestidad y orden del repo | ✔ en `main` (PR #1); Release `modelo-sintetico-v1` | `fase-0-honestidad` |
+| 1 — Módulo de rendimiento | ✔ parámetros de Cenicafé (1,85 g; 0,20) con fuente, oclusión sin calibrar, potencial y listo para cosechar (ADR-010); **pendiente:** calibración local y unidad de muestreo | `fase-2-3-croppie-yolo` → `main` |
+| 2 — Datos (Croppie) | ✔ preparado en Colab: partición por sesión (60 sesiones), prueba de fuga OK, dataset `9dbcf58b…` | `fase-2-3-croppie-yolo` → `main` |
+| 3 — M0, M1 y M2 | ✔ entrenados y evaluados en test (F1 macro M0 0,633/0,659 · M1 0,744 · M2 0,776; mAP@0,5 0,603; R² 0,959) | `fase-2-3-croppie-yolo` → `main` |
+| CUDA (requisito del curso) | ✔ ejecutado en T4: equivalencia OK, 43,6× (kernel vs mejor CPU); YOLO 7,8× | `fase-2-3-croppie-yolo` → `main` |
+| 4 — Evaluación | ✔ test final de los 5 modelos (una vez, 2026-11-18), con IC de M2: `docs/resultados/resultados_test.md` | `fase-2-3-croppie-yolo` → `main` |
+| 5 — Prototipo (app con YOLO) | ✔ Release `modelo-m2-v1`, app con YOLO por defecto, prueba manual del equipo en Windows; ✔ README final; **pendiente:** `docs/legal.md`, `docs/reproducibilidad.md` | `fase-5-documentacion` |
+| 6 — Cierre | — | — |
 
 ## Plan ajustado a 5 días (propuesto 2026-11-15, falta confirmación del equipo)
 
@@ -38,7 +37,7 @@
 | 2026-11-15 | Pesos fuera de git, Release + manifiesto SHA-256 + versión de scikit-learn; fallo claro si no coincide (sin reentreno automático) | ADR-004 |
 | 2026-11-15 | Se mantiene Gradio | ADR-006 |
 | 2026-11-15 | `src/` (app) separado de `ml/` (laboratorio) | ADR-005 |
-| 2026-11-15 | Dataset para M2: Croppie (CC BY-SA 4.0); partición 70/15/15 por foto original; low_visibility excluida y enmascarada | docs/datasets.md |
+| 2026-11-15 | Dataset para M2: Croppie (CC BY-SA 4.0); partición 70/15/15 por foto original (luego por sesión de captura, ver bitácora 2026-11-16/17); low_visibility excluida y enmascarada | docs/datasets.md |
 | 2026-11-18 | Cereza amarilla (Croppie `yellow_cherry`) = PINTÓN | configs/clases.yaml |
 | 2026-11-15 | Métricas comunes propias (COCO 101 puntos) como cifra principal; mAP de Ultralytics como referencia | ADR-007 (propuesta) |
 | 2026-11-15 | Procedencia en tres niveles: no validado / validado en otro dominio / validado en la región | ADR-008 |
@@ -49,7 +48,7 @@
 - [ ] **Estimación con varias fotos**: sin definir (requiere visto bueno del docente). Mientras tanto, una imagen a la vez.
 - [x] Fuentes de peso por cereza y factor cereza→pergamino (investigación del equipo, Cenicafé; ADR-010). Pendiente: calibración local.
 - [x] Mapeo amarilla → PINTÓN confirmado por el equipo (2026-11-18).
-- [ ] Ejecutar `ml/notebooks/m2_yolo_colab.ipynb` en Colab y pegar las salidas 📋.
+- [x] Ejecutar `ml/notebooks/m2_yolo_colab.ipynb` en Colab y pegar las salidas 📋 (M0, M1, M2, CUDA, test e informe).
 - [ ] Fotos propias con conteo manual (15–20) para la evaluación en la región y el R² frente a conteo manual.
 - [ ] PDF del artículo de revisión sistemática (no se recibió).
 - [ ] Inconsistencias del documento base: §7.2 dice "cuatro etapas" pero la tabla tiene seis fases; ref. [7] con "⚠ COMPLETAR"; cifra de pérdidas >30 % sin fuente.
@@ -187,3 +186,15 @@ conteo R² 0,959 frente a las anotaciones. Pendiente para el jueves: tablas/figu
   el manifiesto concreto.
 - Gradio: `SIKAFE_COMPARTIR=1` abre un enlace público temporal (demo en Colab, celda 13); por defecto solo local.
 - Pendiente del equipo: crear la Release `modelo-m2-v1` con `m2_yolo.pt` y hacer commit del manifiesto.
+
+### 2026-11-18 (tarde) — Cierre de la rama fase-2-3, informe y README (rama `fase-5-documentacion`)
+
+- El equipo publicó la Release `modelo-m2-v1` y el manifiesto, y unió `fase-2-3-croppie-yolo` a `main` (PR #2). Verificado en un clon
+  limpio: la descarga del modelo M2 desde la Release coincide con su SHA-256 (c5b8838a…).
+- El equipo reporta que hizo la prueba manual de la app con los pesos reales en Windows.
+- Celda 14 ejecutada con las corridas oficiales. Intervalos de M2 añadidos a `docs/resultados/resultados_test.md`.
+- Generador: la columna "Entrenamiento en" indica el hardware real (M0 en CPU aunque el entorno tuviera una T4), y todas las tablas
+  usan coma decimal, también las de CUDA. **Hay que volver a ejecutar la celda 14** para tener la versión corregida.
+- README reescrito con el estado real, los resultados, el uso, la publicación del modelo, el laboratorio, las limitaciones y las licencias.
+  Prueba nueva `tests/test_privacidad.py`: la imagen anotada sale sin EXIF ni GPS.
+- Pendiente: `docs/legal.md` (licencia de Ultralytics y del repositorio) y `docs/reproducibilidad.md`.
