@@ -2,6 +2,7 @@
 
 import csv
 import json
+import re
 import sys
 
 import numpy as np
@@ -144,6 +145,8 @@ def test_generar_informe_completo(corrida_m2, datos_color, tmp_path):  # noqa: F
     ):
         assert esperado in md, esperado
     assert md.count("| M1 — MobileNetV2") >= 2
+    assert "| Entrenamiento en |" in md and "CPU (scikit-learn)" in md  # M0 entrena en CPU aunque haya GPU en el entorno
+    assert not re.search(r"\d\.\d+ %", md)  # porcentajes con coma decimal
     for fig in ("8_2_proporcion_clases.png", "8_3_curva_m1.png", "8_3_curva_m2.png", "8_4_f1_por_clase.png", "8_4_matriz_confusion_m0_rf.png"):
         assert (salida / "figuras" / fig).is_file(), fig
     tablas = json.loads((salida / "tablas.json").read_text(encoding="utf-8"))
@@ -153,3 +156,17 @@ def test_generar_informe_completo(corrida_m2, datos_color, tmp_path):  # noqa: F
 def test_generar_falla_si_falta_una_corrida(tmp_path):
     with pytest.raises(SystemExit, match="No se encuentran"):
         G.generar(tmp_path, tmp_path / "data.yaml", tmp_path / "out", n_boot=0)
+
+
+def test_coma_decimal_no_toca_versiones_ni_identificadores():
+    assert G.coma_decimal("| CPU | 95.5 | 1.39e-12 | 43.6× |") == "| CPU | 95,5 | 1,39e-12 | 43,6× |"
+    texto = "Linux-6.6.159+-x86_64-with-glibc2.39 · numba 0.64.0 · `ml.benchmark.cuda_m0` · 480×640"
+    assert G.coma_decimal(texto) == texto
+
+
+def test_hardware_m0_es_cpu_aunque_haya_gpu(tmp_path):
+    (tmp_path / "config.yaml").write_text("dispositivo_descriptor: cpu\n", encoding="utf-8")
+    assert G._hardware_entrenamiento("m0_rf", tmp_path, {"gpu": "Tesla T4"}) == "CPU (scikit-learn); Tesla T4 disponible, no usada para entrenar"
+    (tmp_path / "tiempos.json").write_text('{"gpu": true}', encoding="utf-8")
+    assert G._hardware_entrenamiento("m1", tmp_path, {"gpu": "Tesla T4"}) == "GPU Tesla T4"
+    assert G._hardware_entrenamiento("m2", tmp_path, {"gpu": "Tesla T4"}) == "GPU Tesla T4"
