@@ -16,16 +16,28 @@ import numpy as np
 
 from .descriptor import DIMENSION, VERSION_DESCRIPTOR, descriptor_lote_numpy, preparar_recorte
 
-__all__ = ["DIMENSION", "VERSION_DESCRIPTOR", "caracteristicas_recorte", "descriptor_lote", "extraer_lote", "preparar_recorte", "recortar"]
+__all__ = [
+    "DIMENSION",
+    "VERSION_DESCRIPTOR",
+    "caracteristicas_recorte",
+    "descriptor_lote",
+    "extraer_lote",
+    "limites_recorte",
+    "preparar_recorte",
+    "recortar",
+]
+
+
+def limites_recorte(ancho: int, alto: int, caja_xyxy, margen: float = 0.10):
+    """(x0, y0, x1, y1) enteros del recorte de la caja con un margen relativo, limitado a la imagen."""
+    x0, y0, x1, y1 = caja_xyxy
+    mx, my = (x1 - x0) * margen, (y1 - y0) * margen
+    return (int(max(0, np.floor(x0 - mx))), int(max(0, np.floor(y0 - my))), int(min(ancho, np.ceil(x1 + mx))), int(min(alto, np.ceil(y1 + my))))
 
 
 def recortar(imagen: np.ndarray, caja_xyxy, margen: float = 0.10) -> np.ndarray:
     """Recorte de la caja con un margen relativo, limitado a la imagen."""
-    alto, ancho = imagen.shape[:2]
-    x0, y0, x1, y1 = caja_xyxy
-    mx, my = (x1 - x0) * margen, (y1 - y0) * margen
-    x0, y0 = int(max(0, np.floor(x0 - mx))), int(max(0, np.floor(y0 - my)))
-    x1, y1 = int(min(ancho, np.ceil(x1 + mx))), int(min(alto, np.ceil(y1 + my)))
+    x0, y0, x1, y1 = limites_recorte(imagen.shape[1], imagen.shape[0], caja_xyxy, margen)
     return imagen[y0:y1, x0:x1]
 
 

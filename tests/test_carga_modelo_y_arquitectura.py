@@ -151,7 +151,7 @@ def test_toda_la_lectura_y_escritura_de_texto_declara_utf8():
 
 
 # Se importan solo dentro de funciones y las pruebas los simulan (requirements-ml.txt / Colab).
-_OPCIONALES = {"torch", "ultralytics", "huggingface_hub", "google", "numba"}
+_OPCIONALES = {"torch", "torchvision", "ultralytics", "huggingface_hub", "google", "numba"}
 _PAQUETE = {"PIL": "pillow", "yaml": "pyyaml", "sklearn": "scikit-learn", "skimage": "scikit-image"}
 
 

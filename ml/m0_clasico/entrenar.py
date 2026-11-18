@@ -37,9 +37,9 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
 from ml.datos.lectura_yolo import NOMBRES, cajas_gt, grupos_por_archivo, imagenes_y_etiquetas, version_dataset
+from ml.experiments import reporte_clasificacion as R
 from ml.experiments.registro import capturar_entorno, guardar_json, id_corrida
 from ml.m0_clasico.caracteristicas import DIMENSION, VERSION_DESCRIPTOR, descriptor_lote, preparar_recorte, recortar
-from src.evaluation import metricas as M
 from src.infrastructure.ml.manifiesto import ruta_manifiesto, sha256_archivo, verificar_archivo
 
 GRILLAS: Dict[str, List[dict]] = {
@@ -172,69 +172,17 @@ def validacion_cruzada(modelo: str, X, y, grupos, semilla: int, folds: int = 3) 
 def _evaluar(clf, d: dict) -> dict:
     t0 = time.perf_counter()
     pred = clf.predict(d["X"]) if len(d["y"]) else np.zeros(0, int)
-    dt = time.perf_counter() - t0
-    met = M.metricas_clasificacion(d["y"], pred, len(NOMBRES))
-    met["clases"] = NOMBRES
-    met["recortes"] = int(len(d["y"]))
-    met["ms_por_recorte_prediccion"] = 1000 * dt / max(1, len(d["y"]))
-    return met
-
-
-def _resumen_md(corrida: Path, split: str, met: dict, cfg: dict) -> str:
-    filas = "\n".join(
-        f"| {n} | {met['por_clase'][i]['precision']:.3f} | {met['por_clase'][i]['recall']:.3f} | {met['por_clase'][i]['f1']:.3f} | {met['por_clase'][i]['soporte']} |"
-        for i, n in enumerate(NOMBRES)
-    )
-    return f"""# Evaluación M0 ({cfg["modelo"].upper()}) — corrida `{corrida.name}` — partición `{split}`
-
-Recortes de cajas anotadas: {met["recortes"]} · descriptor v{VERSION_DESCRIPTOR} ({DIMENSION} dimensiones: HSV, Lab, LBP, HOG)
-Hiperparámetros (validación cruzada por sesión en train): `{cfg["params"]}` · train submuestreado a {cfg["n_train"]} recortes
-
-| Métrica | Valor |
-|---|---|
-| Exactitud | {met["exactitud"]:.3f} |
-| F1 macro | {met["f1_macro"]:.3f} |
-| Predicción (ms por recorte, CPU) | {met["ms_por_recorte_prediccion"]:.3f} |
-
-| Clase | Precisión | Recall | F1 | Soporte |
-|---|---|---|---|---|
-{filas}
-
-Generado por `python -m ml.m0_clasico.entrenar` (no editar a mano).
-"""
-
-
-def _grafico(corrida: Path, split: str, met: dict) -> None:
-    try:
-        import matplotlib
-
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-    except ImportError:
-        print("AVISO: matplotlib no está instalado; no se genera la matriz de confusión.")
-        return
-    m = np.asarray(met["matriz_confusion"])
-    fig, ax = plt.subplots(figsize=(5.5, 4.5))
-    ax.imshow(m, cmap="Blues")
-    ax.set_xticks(range(len(NOMBRES)), NOMBRES, rotation=45, ha="right")
-    ax.set_yticks(range(len(NOMBRES)), NOMBRES)
-    for i in range(m.shape[0]):
-        for j in range(m.shape[1]):
-            ax.text(j, i, int(m[i, j]), ha="center", va="center", color="white" if m[i, j] > m.max() / 2 else "black", fontsize=8)
-    ax.set_xlabel("Predicho")
-    ax.set_ylabel("Real")
-    ax.set_title(f"M0 – matriz de confusión ({split})")
-    fig.tight_layout()
-    fig.savefig(corrida / f"matriz_confusion_{split}.png", dpi=150)
-    plt.close(fig)
+    return R.metricas(d["y"], pred, time.perf_counter() - t0, "cpu")
 
 
 def _guardar_reporte(corrida: Path, split: str, met: dict, cfg: dict) -> str:
-    guardar_json(corrida / f"metricas_{split}.json", met)
-    resumen = _resumen_md(corrida, split, met, cfg)
-    (corrida / f"resumen_{split}.md").write_text(resumen, encoding="utf-8")
-    _grafico(corrida, split, met)
-    return resumen
+    contexto = [
+        f"Recortes de cajas anotadas: {met['recortes']}",
+        f"Descriptor v{VERSION_DESCRIPTOR} ({DIMENSION} dimensiones: HSV, Lab, LBP, HOG), calculado en {cfg.get('dispositivo_descriptor', 'cpu').upper()}",
+        f"Hiperparámetros (validación cruzada por sesión en train): `{cfg['params']}` · train submuestreado a {cfg['n_train']} recortes",
+    ]
+    titulo = f"Evaluación M0 ({cfg['modelo'].upper()}) — corrida `{corrida.name}` — partición `{split}`"
+    return R.guardar(corrida, split, met, titulo, contexto, "python -m ml.m0_clasico.entrenar", "M0")
 
 
 # ------------------------------------------------------------------ flujo

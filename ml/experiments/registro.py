@@ -3,6 +3,7 @@ Registro reproducible de corridas (regla: todo número reportado es reproducible
 Cada corrida guarda: config, semilla, commit de git, versiones de librerías,
 hardware y la versión (hash) del dataset preparado.
 """
+
 import json
 import os
 import platform
@@ -32,7 +33,11 @@ def commit_git() -> dict:
         except (OSError, subprocess.SubprocessError):
             return None
 
-    return {"commit": _git("rev-parse", "HEAD"), "rama": _git("rev-parse", "--abbrev-ref", "HEAD"), "cambios_sin_commit": bool(_git("status", "--porcelain"))}
+    return {
+        "commit": _git("rev-parse", "HEAD"),
+        "rama": _git("rev-parse", "--abbrev-ref", "HEAD"),
+        "cambios_sin_commit": bool(_git("status", "--porcelain")),
+    }
 
 
 def capturar_entorno(ruta_datos: Optional[Path] = None) -> dict:

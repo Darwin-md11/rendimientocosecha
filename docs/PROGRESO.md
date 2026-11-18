@@ -12,7 +12,7 @@
 | 2 — Datos (Croppie) | ✔ script de preparación listo; **pendiente:** ejecutarlo en Colab | `fase-2-3-croppie-yolo` |
 | 3 — M2 YOLO | ✔ entrenado (corrida `m2_yolo11n_640_s0_20261116-1754`); **pendiente:** evaluación propia en val, test final | `fase-2-3-croppie-yolo` |
 | 3 — M0 | ✔ script listo (RF y SVM, CV por sesión); **pendiente:** ejecutar en Colab (CPU) | `fase-2-3-croppie-yolo` |
-| 3 — M1 | pendiente | — |
+| 3 — M1 | ✔ script listo (MobileNetV2/EfficientNet-B0/ResNet-50, transfer learning); **pendiente:** ejecutar en Colab (GPU) | `fase-2-3-croppie-yolo` |
 | CUDA (requisito del curso) | ✔ kernel del descriptor de M0 + comparación CPU/GPU de YOLO; **pendiente:** ejecutar en Colab | `fase-2-3-croppie-yolo` |
 | 4 — Evaluación | ✔ métricas comunes listas; tablas de M2 se generan al evaluar | `fase-2-3-croppie-yolo` |
 | 5–6 — Prototipo final y cierre | — | — |
@@ -94,3 +94,14 @@
 - `ml/benchmark/cuda_m0.py` (equivalencia + aceleración sobre recortes reales) y `ml/benchmark/yolo_cpu_gpu.py`.
 - **No ejecutado en GPU** (el entorno de desarrollo no tiene GPU ni Numba): pendiente correr las celdas CUDA en Colab.
 - M2, procedencia confirmada por el equipo: commit 803c327, dataset 9dbcf58b…, pesos SHA-256 c5b8838a…, T4.
+
+### 2026-11-17 (noche) — M1
+
+- `ml/m1_cnn/`: caché de recortes 96×96 en disco (las MISMAS cerezas y el mismo orden que M0, verificado), MobileNetV2 preentrenada
+  en ImageNet: 2 épocas de cabeza (red congelada) + 10 de ajuste completo (AdamW, coseno), pérdida con pesos por clase, aumento en
+  GPU sin tocar tono ni saturación, precisión mixta, mejor época por F1 macro en val, test único con `--final`.
+- Configs: `m1_mobilenetv2_96` (principal), `m1_efficientnet_b0_96` y `m1_mobilenetv2_96_sin_preentrenar` (experimento (d), opcionales).
+- **No ejecutado** (sin PyTorch en el entorno de desarrollo): probado lo que no depende de PyTorch; en Colab, primero `--rapido`.
+- Reporte de clasificación común para M0 y M1 (`ml/experiments/reporte_clasificacion.py`).
+- Alcance: M0 y M1 clasifican recortes de cajas reales (no detectan); se comparan con M2 por la clasificación en cajas
+  emparejadas. El pipeline de dos etapas (localizador + clasificador) para usar M0/M1 en la app queda como trabajo futuro.
