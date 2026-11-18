@@ -15,6 +15,22 @@ Arquitectura hexagonal (puertos y adaptadores). Metodología CRISP-DM.
 pip install -r requirements.txt          # app
 pip install -r requirements-dev.txt      # + pruebas y lint
 python scripts/descargar_modelo.py       # pesos desde la Release, con verificación SHA-256
+
+1. Usarla en cualquier PC
+Instale las dependencias, de preferencia en un entorno virtual:
+pip install -r requirements.txt -r requirements-ml.txt
+
+Esto instala PyTorch para CPU, que es una descarga grande.
+
+2. Descargue los modelos:
+python scripts/descargar_modelo.py
+
+Baja los modelos y verifica el hash. En el PC donde publicó dirá “Ya existe y el hash coincide”. Si quiere probar la descarga real, borre antes models\m2_yolo.pt.
+
+3. Abra la interfaz web:
+python -m src.infrastructure.adapters.ui.gradio_app
+
+Luego entre a http://127.0.0.1:7860. YOLO es el detector por defecto. En la CPU de Colab tardó unos 95 ms por imagen; en su PC el tiempo será otro.
 ```
 
 Los pesos no se guardan en git ([ADR-004](docs/decisiones/ADR-004-politica-pesos-y-datos.md)): cada modelo tiene un
