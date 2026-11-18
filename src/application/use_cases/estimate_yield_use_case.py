@@ -94,6 +94,7 @@ class AnalizarImagenCosechaUseCase:
             rendimiento_cosechable_kg=reporte.rendimiento_cosechable_kg,
             rendimiento_cosechable_pergamino_kg=reporte.rendimiento_cosechable_pergamino_kg,
             version_parametros=self.catalogo.version_parametros,
+            unidad_muestreo=self.catalogo.supuesto_muestreo or None,
         )
 
     def _advertencias_rendimiento(self, supuestos) -> List[str]:

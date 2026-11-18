@@ -66,7 +66,7 @@ python -m src.infrastructure.adapters.ui.gradio_app
 python -m src.infrastructure.adapters.ui.cli_app --imagen foto.jpg --guardar-anotada resultado.jpg
 ```
 
-Cada resultado muestra:
+Suba la foto de **una planta completa** e indique cuántas plantas tiene el lote; el resto de parámetros está en "Parámetros avanzados". Cada resultado muestra:
 - las cerezas por estado de madurez;
 - el rendimiento **potencial** (todas las cerezas) y el **listo para cosechar** (MADURO + SOBREMADURO), en kg de café cereza y de pergamino seco;
 - los **supuestos del cálculo**: cada factor con su fuente y su estado de calibración;
@@ -179,7 +179,7 @@ Pruebas y lint: `pip install -r requirements-dev.txt`, luego `python -m pytest` 
 
 - **Dominio:** se entrenó y se evaluó solo con Croppie, fotos de celular de fincas de Uganda (2023). Falta validarlo con fotos de Norte de Santander.
 - **Conteo:** se comparó con las cajas anotadas del dataset, no con un conteo manual en campo. Hay cerezas ocultas por hojas: el factor de oclusión es 1,0, es decir, no se corrige, y está pendiente de calibrar.
-- **Rendimiento:** usa un solo peso medio de cereza (1,85 g) y un solo factor a pergamino (0,20) para todos los estados de madurez. La unidad de muestreo y la estimación con varias fotos por planta **no están definidas**.
+- **Rendimiento:** usa un solo peso medio de cereza (1,85 g) y un solo factor a pergamino (0,20) para todos los estados de madurez. Cada foto debe mostrar **una planta completa** ([ADR-011](docs/decisiones/ADR-011-unidad-de-muestreo-e-interfaz.md)), y esa planta se toma como representativa del lote: no hay estimación con varias fotos. Con fotos de una rama, el kg no es válido.
 - **PINTÓN** es la clase más difícil: AP de 0,257 en M2. La cereza amarilla de Croppie se tomó como PINTÓN por decisión del equipo.
 - Cada modelo se entrenó con una sola semilla. M0 y M1 no tienen intervalos de confianza, porque no se guardaron sus predicciones por recorte.
 
