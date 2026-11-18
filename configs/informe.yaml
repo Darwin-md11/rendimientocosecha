@@ -1,0 +1,17 @@
+# Corridas OFICIALES del informe (modelos congelados; test evaluado una sola vez el 2026-11-18).
+# Se usan IDs exactos, nunca patrones: un patrón puede tomar la corrida equivocada.
+corridas:
+  m0_rf: m0_rf_s0_20261118-0342
+  m0_svm: m0_svm_s0_20261118-0403
+  m1_sin_preentrenar: m1_mobilenetv2_96_sin_preentrenar_s0_20261118-0540
+  m1: m1_mobilenetv2_96_s0_20261118-0456
+  m2: m2_yolo11n_640_s0_20261116-1754
+etiquetas:
+  m0_rf: "M0 — color+textura + Random Forest"
+  m0_svm: "M0 — color+textura + SVM"
+  m1_sin_preentrenar: "M1 — MobileNetV2 sin preentrenar"
+  m1: "M1 — MobileNetV2 con transfer learning"
+  m2: "M2 — YOLO11n (cerezas localizadas)"
+benchmarks:   # archivos .md generados por ml/benchmark/* (en la carpeta --benchmarks)
+  - cuda_m0_val_20000.md
+  - yolo_cpu_gpu_val_200.md

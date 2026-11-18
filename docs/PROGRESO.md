@@ -166,3 +166,14 @@ conteo R² 0,959 frente a las anotaciones. Pendiente para el jueves: tablas/figu
   (Tabla 17), 4,94/4,89 (Tabla 18) y 0,20 (Tabla 20).
 - Decisiones del equipo: peso 1,85 g; oclusión 1,0 (sin corrección, pendiente de calibración); reportar también "listo para cosechar".
 - `docs/modelo-rendimiento.md` actualizado con fórmulas, procedencia, limitaciones y 5 referencias IEEE para el informe.
+
+### 2026-11-18 — Generador del capítulo 8 e intervalos de confianza de M2
+
+- `configs/informe.yaml`: las cinco corridas oficiales por **ID exacto** (sin patrones, por lo ocurrido con la celda 11b).
+- `python -m ml.informe.generar` (celda 14 de los cuadernos): `informe_resultados.md` (8.2 datos, 8.3 modelos, 8.4 evaluación,
+  contraste con la hipótesis, tablas de CUDA, trazabilidad commit/dataset/hardware), `tablas.json` y `figuras/`.
+- IC 95 % de M2 (`ml/informe/bootstrap_m2.py`): bootstrap percentil, 2000 remuestreos, semilla 0, a dos niveles (imagen y sesión de
+  captura). Se recalcula desde `predicciones_test.jsonl` sin volver a ejecutar el modelo; el generador avisa si la mAP recalculada
+  difiere más de 0,01 de la registrada. Con 8 sesiones en test el IC por sesión es ancho y poco fiable: se reporta como orden de
+  magnitud. M0/M1 sin IC (no se guardaron predicciones por recorte).
+- Pruebas: la AP ponderada equivale a repetir imágenes; sin remuestreo se reproducen exactamente las métricas registradas.
