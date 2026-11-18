@@ -10,11 +10,11 @@
 | 0 — Línea base, honestidad y orden del repo | ✔ código y pruebas listos; **pendiente:** Release del modelo y *push* | `fase-0-honestidad` |
 | 1 — Módulo de rendimiento (versión mínima) | ✔ factores con fuente en `configs/agronomia.yaml`, `TODO(fuente)` visible; **pendiente:** fuentes reales y unidad de muestreo | `fase-2-3-croppie-yolo` |
 | 2 — Datos (Croppie) | ✔ script de preparación listo; **pendiente:** ejecutarlo en Colab | `fase-2-3-croppie-yolo` |
-| 3 — M2 YOLO | ✔ entrenado (corrida `m2_yolo11n_640_s0_20261116-1754`); **pendiente:** evaluación propia en val, test final | `fase-2-3-croppie-yolo` |
-| 3 — M0 | ✔ entrenado (RF y SVM, CV por sesión); **pendiente:** test final | `fase-2-3-croppie-yolo` |
-| 3 — M1 | ✔ entrenado (MobileNetV2, corrida `m1_mobilenetv2_96_s0_20261118-0456`); **pendiente:** test final | `fase-2-3-croppie-yolo` |
+| 3 — M2 YOLO | ✔ entrenado y evaluado en test (mAP@0,5 0,603; conteo R² 0,959) | `fase-2-3-croppie-yolo` |
+| 3 — M0 | ✔ entrenado y evaluado en test (F1 macro RF 0,633, SVM 0,659) | `fase-2-3-croppie-yolo` |
+| 3 — M1 | ✔ entrenado y evaluado en test (F1 macro 0,744; sin preentrenar 0,690) | `fase-2-3-croppie-yolo` |
 | CUDA (requisito del curso) | ✔ ejecutado en T4: equivalencia OK, 43,6× (kernel vs mejor CPU); YOLO 7,8× | `fase-2-3-croppie-yolo` |
-| 4 — Evaluación | ✔ métricas comunes listas; tablas de M2 se generan al evaluar | `fase-2-3-croppie-yolo` |
+| 4 — Evaluación | ✔ test final de los 5 modelos (una vez, 2026-11-18): `docs/resultados/resultados_test.md` | `fase-2-3-croppie-yolo` |
 | 5–6 — Prototipo final y cierre | — | — |
 
 ## Plan ajustado a 5 días (propuesto 2026-11-15, falta confirmación del equipo)
@@ -152,3 +152,9 @@ Notas de interpretación:
 - Contrato del detector con los pesos reales: OK (36 cerezas en un recorte de val).
 - M0: extracción del descriptor en CPU 150,3 s para 105 613 recortes (1,42 ms/recorte, consistente con el benchmark de CUDA).
   SVM: 9,4 ms por recorte para predecir (RF: 0,019 ms).
+
+### 2026-11-18 — Evaluación final en test (una sola vez, modelos congelados por decisión del equipo)
+
+Resultados y contraste con la hipótesis en `docs/resultados/resultados_test.md`. Resumen: F1 macro M0 RF 0,633 · M0 SVM 0,659 ·
+M1 sin preentrenar 0,690 · M1 transfer learning 0,744 · M2 en cerezas localizadas 0,776; M2 mAP@0,5 0,603 (meta 0,80 no alcanzada),
+conteo R² 0,959 frente a las anotaciones. Pendiente para el jueves: tablas/figuras del informe, app con YOLO, legal y reproducibilidad.
