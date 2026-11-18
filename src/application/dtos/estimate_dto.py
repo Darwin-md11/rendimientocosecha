@@ -28,6 +28,13 @@ class RespuestaEstimacionDTO:
     supuestos: List[Dict[str, Any]] = field(default_factory=list)  # factores usados, con valor, unidad y fuente
     unidad_rendimiento: str = "kg de café cereza"
     rendimiento_pergamino_kg: Optional[float] = None  # solo si el factor cereza→pergamino tiene valor y fuente
+    # "Listo para cosechar": solo las cerezas en estados_cosechables (p. ej. MADURO y SOBREMADURO)
+    estados_cosechables: List[str] = field(default_factory=list)
+    fuente_estados_cosechables: Optional[str] = None
+    frutos_cosechables: Optional[int] = None
+    rendimiento_cosechable_kg: Optional[float] = None
+    rendimiento_cosechable_pergamino_kg: Optional[float] = None
+    version_parametros: Optional[str] = None
 
     @property
     def es_resultado_validado(self) -> bool:

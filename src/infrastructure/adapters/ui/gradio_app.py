@@ -138,7 +138,7 @@ with gr.Blocks(title="SIKAFE - Dashboard Agronómico", theme=theme) as demo:
             with gr.Row():
                 kpi_total = gr.Number(label="Total Cerezas", interactive=False)
                 kpi_madurez = gr.Number(label="Índice Madurez (%)", interactive=False)
-                kpi_yield = gr.Number(label="Rendimiento (kg café cereza)", interactive=False)
+                kpi_yield = gr.Number(label="Rendimiento potencial (kg café cereza)", interactive=False)
 
             output_image = gr.Image(type="pil", label="Detección de Objetos (Bounding Boxes)")
             output_df = gr.Dataframe(label="Desglose por Estado de Maduración", interactive=False)

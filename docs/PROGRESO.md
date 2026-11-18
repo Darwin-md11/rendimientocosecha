@@ -8,7 +8,7 @@
 | Fase | Estado | Rama |
 |---|---|---|
 | 0 — Línea base, honestidad y orden del repo | ✔ código y pruebas listos; **pendiente:** Release del modelo y *push* | `fase-0-honestidad` |
-| 1 — Módulo de rendimiento (versión mínima) | ✔ factores con fuente en `configs/agronomia.yaml`, `TODO(fuente)` visible; **pendiente:** fuentes reales y unidad de muestreo | `fase-2-3-croppie-yolo` |
+| 1 — Módulo de rendimiento | ✔ parámetros de Cenicafé (1,85 g; 0,20) con fuente, oclusión sin calibrar, potencial y listo para cosechar (ADR-010); **pendiente:** calibración local y unidad de muestreo | `fase-2-3-croppie-yolo` |
 | 2 — Datos (Croppie) | ✔ script de preparación listo; **pendiente:** ejecutarlo en Colab | `fase-2-3-croppie-yolo` |
 | 3 — M2 YOLO | ✔ entrenado y evaluado en test (mAP@0,5 0,603; conteo R² 0,959) | `fase-2-3-croppie-yolo` |
 | 3 — M0 | ✔ entrenado y evaluado en test (F1 macro RF 0,633, SVM 0,659) | `fase-2-3-croppie-yolo` |
@@ -47,7 +47,7 @@
 
 - [ ] **Unidad de muestreo** (qué cubre una foto: rama, lado de planta, planta): sin definir. Bloquea la cadena de rendimiento completa de la Fase 1.
 - [ ] **Estimación con varias fotos**: sin definir (requiere visto bueno del docente). Mientras tanto, una imagen a la vez.
-- [ ] Documento fuente de los factores agronómicos (Cenicafé/FNC): peso por fruto, frutos por rama, ramas por planta, densidad, factor cereza→pergamino.
+- [x] Fuentes de peso por cereza y factor cereza→pergamino (investigación del equipo, Cenicafé; ADR-010). Pendiente: calibración local.
 - [x] Mapeo amarilla → PINTÓN confirmado por el equipo (2026-11-18).
 - [ ] Ejecutar `ml/notebooks/m2_yolo_colab.ipynb` en Colab y pegar las salidas 📋.
 - [ ] Fotos propias con conteo manual (15–20) para la evaluación en la región y el R² frente a conteo manual.
@@ -159,3 +159,10 @@ Notas de interpretación:
 Resultados y contraste con la hipótesis en `docs/resultados/resultados_test.md`. Resumen: F1 macro M0 RF 0,633 · M0 SVM 0,659 ·
 M1 sin preentrenar 0,690 · M1 transfer learning 0,744 · M2 en cerezas localizadas 0,776; M2 mAP@0,5 0,603 (meta 0,80 no alcanzada),
 conteo R² 0,959 frente a las anotaciones. Pendiente para el jueves: tablas/figuras del informe, app con YOLO, legal y reproducibilidad.
+
+### 2026-11-18 — Parámetros agronómicos (ADR-010)
+
+- Investigación del equipo en `docs/investigacion/`; verificadas contra el PDF de Montilla-Pérez et al. (2008) las cifras 1,99/1,85 g
+  (Tabla 17), 4,94/4,89 (Tabla 18) y 0,20 (Tabla 20).
+- Decisiones del equipo: peso 1,85 g; oclusión 1,0 (sin corrección, pendiente de calibración); reportar también "listo para cosechar".
+- `docs/modelo-rendimiento.md` actualizado con fórmulas, procedencia, limitaciones y 5 referencias IEEE para el informe.

@@ -16,7 +16,7 @@ from src.application.dtos.estimate_dto import SolicitudEstimacionDTO
 from src.application.use_cases.estimate_yield_use_case import AnalizarImagenCosechaUseCase
 from src.domain.models.coffee_cherry import BoundingBox, DeteccionFruto, EstadoMadurez
 from src.domain.models.modelo_info import FamiliaModelo, ModeloInfo
-from src.domain.models.supuestos import DATO, LITERATURA, CatalogoSupuestos, Supuesto
+from src.domain.models.supuestos import CALIBRACION, DATO, LITERATURA, CatalogoSupuestos, Supuesto
 from src.domain.ports.fruit_detector_port import FruitDetectorPort
 from src.infrastructure.adapters.detectors.mock_detector_adapter import MockFruitDetectorAdapter
 from src.infrastructure.adapters.ui import presentacion
@@ -29,12 +29,13 @@ RAIZ = Path(__file__).resolve().parents[1]
 CATALOGO_COMPLETO = CatalogoSupuestos(
     {
         "peso_medio_fruto_g": Supuesto("peso_medio_fruto_g", "Peso medio", LITERATURA, 1.8, "g", "Fuente de prueba"),
-        "factor_oclusion": Supuesto("factor_oclusion", "Oclusión", LITERATURA, 1.25, "adimensional", "Calibración de prueba"),
+        "factor_oclusion": Supuesto("factor_oclusion", "Oclusión", CALIBRACION, 1.25, "adimensional", "Calibración de prueba"),
         "plantas_muestra": Supuesto("plantas_muestra", "Plantas muestra", DATO, 1, "plantas", "protocolo de prueba"),
         "plantas_totales_lote": Supuesto("plantas_totales_lote", "Plantas lote", DATO, 2500, "plantas", "censo de prueba"),
     },
     muestreo_definido=True,
     validado_con_cosecha_real=True,
+    calibrado_localmente=True,
 )
 
 

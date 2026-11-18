@@ -16,6 +16,9 @@ class ReporteRendimiento:
     parametros: ParametrosAgronomicos
     detecciones: List[DeteccionFruto]
     rendimiento_pergamino_kg: Optional[float] = None
+    frutos_cosechables: Optional[int] = None  # cerezas en los estados "listos para cosechar"
+    rendimiento_cosechable_kg: Optional[float] = None
+    rendimiento_cosechable_pergamino_kg: Optional[float] = None
 
     @property
     def porcentaje_madurez(self) -> float:

@@ -5,12 +5,13 @@ Cada factor que convierte conteo en rendimiento lleva valor, unidad y FUENTE. Un
 sin fuente documental se marca "TODO(fuente)" y genera una advertencia en el reporte.
 """
 
-from dataclasses import dataclass, field, replace
-from typing import Dict, Optional
+from dataclasses import dataclass, replace
+from typing import Dict, Optional, Tuple
 
 TODO_FUENTE = "TODO(fuente)"
 INGRESADO_POR_USUARIO = "ingresado por el usuario"
-LITERATURA, DATO = "literatura", "dato"
+LITERATURA, CALIBRACION, DATO = "literatura", "calibracion", "dato"
+TIPOS = (LITERATURA, CALIBRACION, DATO)
 CLAVES_PARAMETROS = ("peso_medio_fruto_g", "factor_oclusion", "plantas_muestra", "plantas_totales_lote")
 
 
@@ -23,14 +24,15 @@ class Supuesto:
     unidad: str
     fuente: Optional[str] = None
     incertidumbre: Optional[str] = None
+    estado: Optional[str] = None  # p. ej. "referencia bibliográfica, pendiente de calibración local"
 
     def __post_init__(self):
-        if self.tipo not in (LITERATURA, DATO):
-            raise ValueError(f"{self.clave}: tipo debe ser '{LITERATURA}' o '{DATO}'.")
+        if self.tipo not in TIPOS:
+            raise ValueError(f"{self.clave}: tipo debe ser uno de {TIPOS}.")
 
     @property
     def tiene_fuente(self) -> bool:
-        """Un factor de literatura solo cuenta con fuente documental; un dato, también si lo ingresó el usuario."""
+        """Literatura y calibración solo cuentan con fuente documental o de calibración; un dato, también si lo ingresó el usuario."""
         if not self.fuente:
             return False
         return self.tipo == DATO or self.fuente != INGRESADO_POR_USUARIO
@@ -48,9 +50,9 @@ class Supuesto:
         (para la literatura, solo si difiere del valor documentado)."""
         if valor is None:
             return self
-        if self.tipo == LITERATURA and self.valor is not None and float(valor) == float(self.valor):
+        if self.tipo != DATO and self.valor is not None and float(valor) == float(self.valor):
             return self
-        return replace(self, valor=float(valor), fuente=INGRESADO_POR_USUARIO, incertidumbre=None)
+        return replace(self, valor=float(valor), fuente=INGRESADO_POR_USUARIO, incertidumbre=None, estado=None)
 
     def como_dict(self) -> dict:
         return {
@@ -62,6 +64,7 @@ class Supuesto:
             "fuente": self.fuente_mostrada,
             "tiene_fuente": self.tiene_fuente,
             "incertidumbre": self.incertidumbre,
+            "estado": self.estado,
         }
 
 
@@ -73,7 +76,11 @@ class CatalogoSupuestos:
     supuesto_muestreo: str = ""
     validado_con_cosecha_real: bool = False
     origen: str = "valores por defecto del dominio (sin fuentes)"
-    _extra: dict = field(default_factory=dict, compare=False, repr=False)
+    version_parametros: Optional[str] = None
+    calibrado_localmente: bool = False
+    simplificaciones: Tuple[str, ...] = ()
+    estados_cosechables: Tuple[str, ...] = ()  # nombres de EstadoMadurez que cuentan como "listo para cosechar"
+    fuente_estados_cosechables: Optional[str] = None
 
     def __post_init__(self):
         faltan = set(CLAVES_PARAMETROS) - set(self.factores)
@@ -88,7 +95,7 @@ class CatalogoSupuestos:
         """Catálogo mínimo con los valores dados y SIN fuentes (todas las advertencias activas)."""
         tipos = {
             "peso_medio_fruto_g": (LITERATURA, "Peso medio de una cereza de café", "g"),
-            "factor_oclusion": (LITERATURA, "Cerezas reales por cereza visible", "adimensional"),
+            "factor_oclusion": (CALIBRACION, "Cerezas reales por cereza visible", "adimensional"),
             "plantas_muestra": (DATO, "Plantas que cubren las fotos analizadas", "plantas"),
             "plantas_totales_lote": (DATO, "Plantas del lote", "plantas"),
         }

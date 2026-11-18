@@ -15,7 +15,7 @@ from ...domain.exceptions.domain_exceptions import (
 from ...domain.models.agronomic_params import ParametrosAgronomicos
 from ...domain.models.coffee_cherry import DeteccionFruto, EstadoMadurez
 from ...domain.models.modelo_info import ModeloInfo
-from ...domain.models.supuestos import CLAVES_PARAMETROS, LITERATURA, TODO_FUENTE, CatalogoSupuestos
+from ...domain.models.supuestos import CALIBRACION, CLAVES_PARAMETROS, DATO, LITERATURA, TODO_FUENTE, CatalogoSupuestos
 from ...domain.ports.fruit_detector_port import FruitDetectorPort
 from ...domain.services.yield_calculator import CalculadoraRendimientoService
 from ..dtos.estimate_dto import RespuestaEstimacionDTO, SolicitudEstimacionDTO
@@ -57,7 +57,8 @@ class AnalizarImagenCosechaUseCase:
 
         info = self.detector_adapter.info()
         detecciones = self.detector_adapter.detectar_frutos(imagen, solicitud.umbral_confianza)
-        reporte = CalculadoraRendimientoService.calcular(detecciones, parametros, factor_pergamino)
+        estados_cosechables = [EstadoMadurez(e) for e in self.catalogo.estados_cosechables] or None
+        reporte = CalculadoraRendimientoService.calcular(detecciones, parametros, factor_pergamino, estados_cosechables)
         imagen_anotada_bytes = self._generar_imagen_anotada(imagen, detecciones, info)
 
         conteo_str_dict = {
@@ -87,6 +88,12 @@ class AnalizarImagenCosechaUseCase:
             supuestos=[x.como_dict() for x in supuestos],
             unidad_rendimiento=self.catalogo.salida,
             rendimiento_pergamino_kg=reporte.rendimiento_pergamino_kg,
+            estados_cosechables=list(self.catalogo.estados_cosechables),
+            fuente_estados_cosechables=self.catalogo.fuente_estados_cosechables,
+            frutos_cosechables=reporte.frutos_cosechables,
+            rendimiento_cosechable_kg=reporte.rendimiento_cosechable_kg,
+            rendimiento_cosechable_pergamino_kg=reporte.rendimiento_cosechable_pergamino_kg,
+            version_parametros=self.catalogo.version_parametros,
         )
 
     def _advertencias_rendimiento(self, supuestos) -> List[str]:
@@ -94,9 +101,17 @@ class AnalizarImagenCosechaUseCase:
         sin_fuente = [x.descripcion.lower() for x in supuestos if x.valor is not None and not x.tiene_fuente and x.tipo == LITERATURA]
         if sin_fuente:
             avisos.append(f"RENDIMIENTO INDICATIVO: factores sin fuente documental ({TODO_FUENTE}): {', '.join(sin_fuente)}.")
-        datos_ejemplo = [x.descripcion.lower() for x in supuestos if x.valor is not None and not x.tiene_fuente and x.tipo != LITERATURA]
+        for x in supuestos:
+            if x.tipo == CALIBRACION and x.valor is not None and not x.tiene_fuente:
+                avisos.append(f"Sin calibración local: {x.descripcion.lower()} = {x.valor:g} ({x.estado or 'pendiente de calibración'}).")
+        datos_ejemplo = [x.descripcion.lower() for x in supuestos if x.valor is not None and not x.tiene_fuente and x.tipo == DATO]
         if datos_ejemplo:
             avisos.append(f"Datos del lote con valor de ejemplo (ingrese los suyos): {', '.join(datos_ejemplo)}.")
+        con_fuente = [x for x in supuestos if x.tipo == LITERATURA and x.tiene_fuente and x.valor is not None]
+        if con_fuente and not self.catalogo.calibrado_localmente:
+            version = f" (parámetros {self.catalogo.version_parametros})" if self.catalogo.version_parametros else ""
+            avisos.append(f"ESTIMACIÓN INDICATIVA basada en parámetros bibliográficos, no calibrados localmente{version}.")
+        avisos.extend(self.catalogo.simplificaciones)
         if not self.catalogo.muestreo_definido:
             avisos.append(f"Unidad de muestreo sin definir: {self.catalogo.supuesto_muestreo}")
         if not self.catalogo.validado_con_cosecha_real:

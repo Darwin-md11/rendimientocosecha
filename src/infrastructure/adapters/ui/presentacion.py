@@ -17,13 +17,23 @@ ESTADO_NO_VALIDADO = (
 
 
 def lineas_supuestos(respuesta: RespuestaEstimacionDTO) -> List[str]:
-    lineas = [f"Rendimiento estimado: {respuesta.rendimiento_estimado_kg} {respuesta.unidad_rendimiento}"]
+    lineas = [f"Rendimiento estimado (potencial, todas las cerezas): {respuesta.rendimiento_estimado_kg} {respuesta.unidad_rendimiento}"]
     if respuesta.rendimiento_pergamino_kg is not None:
-        lineas.append(f"Equivalente en café pergamino seco: {respuesta.rendimiento_pergamino_kg} kg")
-    lineas.append("Supuestos del cálculo:")
+        lineas.append(f"  equivalente en café pergamino seco: {respuesta.rendimiento_pergamino_kg} kg")
+    if respuesta.rendimiento_cosechable_kg is not None:
+        estados = " + ".join(e.lower() for e in respuesta.estados_cosechables)
+        lineas.append(f"Listo para cosechar ({estados}: {respuesta.frutos_cosechables} cerezas): "
+                      f"{respuesta.rendimiento_cosechable_kg} {respuesta.unidad_rendimiento}")
+        if respuesta.rendimiento_cosechable_pergamino_kg is not None:
+            lineas.append(f"  equivalente en café pergamino seco: {respuesta.rendimiento_cosechable_pergamino_kg} kg")
+        if respuesta.fuente_estados_cosechables:
+            lineas.append(f"  criterio de cosecha: {respuesta.fuente_estados_cosechables}")
+    version = f" (versión {respuesta.version_parametros})" if respuesta.version_parametros else ""
+    lineas.append(f"Supuestos del cálculo{version}:")
     for s in respuesta.supuestos:
         valor = "—" if s["valor"] is None else f"{s['valor']:g} {s['unidad']}"
-        lineas.append(f"  - {s['descripcion']}: {valor} (fuente: {s['fuente']})")
+        estado = f"; {s['estado']}" if s.get("estado") else ""
+        lineas.append(f"  - {s['descripcion']}: {valor} (fuente: {s['fuente']}{estado})")
     return lineas
 
 

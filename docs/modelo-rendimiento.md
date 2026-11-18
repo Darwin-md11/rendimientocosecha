@@ -1,44 +1,73 @@
-# Modelo de rendimiento (versión mínima)
+# Modelo de rendimiento
 
-> Estado: **indicativo, no validado.** Convierte el conteo de una foto en kg de café cereza con factores que, a la fecha,
-> **no tienen fuente documental** (`TODO(fuente)` en `configs/agronomia.yaml`). La app y la CLI lo advierten en cada resultado.
+> **Estado: estimación indicativa basada en parámetros bibliográficos, no calibrada localmente.** La app y la CLI lo advierten
+> en cada resultado. Parámetros: `configs/agronomia.yaml` (versión `2026-11-18`). Respaldo:
+> `docs/investigacion/parametros_agronomicos_cenicafe.md` (investigación del equipo) y ADR-010.
 
-## Fórmula
+## Fórmulas
 
 ```
-kg_cereza    = frutos_detectados × factor_oclusion × (peso_medio_fruto_g / 1000) × (plantas_totales_lote / plantas_muestra)
-kg_pergamino = kg_cereza × factor_cereza_pergamino        (solo si ese factor tiene valor y fuente)
+kg_cereza    = cerezas × factor_oclusion × (peso_medio_fruto_g / 1000) × (plantas_totales_lote / plantas_muestra)
+kg_pergamino = kg_cereza × factor_cereza_pergamino
 ```
 
-Ejemplo verificado en las pruebas (`tests/test_rendimiento.py`): 10 cerezas × 1,25 × 0,0018 kg × (2500 / 1) = **56,25 kg** de cereza;
-con un factor de pergamino de 0,2 (valor de prueba, no real) serían 11,25 kg.
+Se reportan dos cifras:
+- **Potencial:** todas las cerezas detectadas, suponiendo que llegan a la cosecha.
+- **Listo para cosechar:** solo las cerezas MADURO y SOBREMADURO (criterio: Cenicafé, Cartilla 19, recomienda recolectar frutos maduros).
 
-## Factores y su procedencia
+Ejemplos verificados en `tests/test_rendimiento.py`: 10 000 cerezas × 1,85 g = **18,5 kg** de cereza y × 0,20 = **3,70 kg** de pergamino
+seco (el ejemplo de la investigación del equipo).
 
-Todos viven en **`configs/agronomia.yaml`**, única fuente de los valores por defecto (la UI y la CLI los leen de ahí).
+## Parámetros y su procedencia
 
-| Factor | Tipo | Valor actual | Fuente | Qué falta |
+| Factor | Tipo | Valor | Fuente | Estado |
 |---|---|---|---|---|
-| Peso medio de una cereza (g) | literatura | 1,8 | `TODO(fuente)` (heredado del prototipo) | documento Cenicafé/FNC para la(s) variedad(es) de la zona |
-| Factor de oclusión (cerezas reales / visibles) | literatura | 1,25 | `TODO(fuente)` | calibrarlo con conteo manual: regresión por el origen de conteo real vs detectado |
-| Plantas que cubren las fotos | dato | 1 | lo ingresa el usuario | definir la **unidad de muestreo** (¿rama, lado de planta, planta?) |
+| Peso medio de una cereza | literatura | **1,85 g** | Montilla-Pérez et al. (2008), Cenicafé 59(2):120-142, Tabla 17, café **sin seleccionar** (seleccionado: 1,99 g) | referencia bibliográfica, pendiente de calibración local |
+| Cereza → pergamino seco | literatura | **0,20** kg/kg | Montilla-Pérez et al. (2008), Tabla 20 (aproximado: 1/4,94–1/4,89 = 0,202–0,205) | referencia bibliográfica, pendiente de calibración local |
+| Corrección por cerezas ocultas | calibración | **1,0** (sin corrección) | no existe valor bibliográfico | pendiente de calibración con conteo manual |
+| Plantas que cubren las fotos | dato | 1 | lo ingresa el usuario | unidad de muestreo sin definir |
 | Plantas del lote | dato | 2500 (ejemplo) | lo ingresa el usuario | — |
-| Factor cereza → pergamino seco | literatura | sin valor | `TODO(fuente)` | documento Cenicafé/FNC; mientras tanto **no se calcula pergamino** |
+
+Valores verificados contra el PDF original de Cenicafé (Tablas 17, 18 y 20) el 2026-11-18.
+
+**Por qué 1,85 g y no 1,99 g:** las fotos muestran todas las cerezas de la rama, no una cosecha seleccionada; la muestra "sin
+seleccionar" es la condición más parecida. **Por qué la oclusión es 1,0:** el valor anterior (1,25) no tenía fuente y la
+investigación confirma que no hay valor bibliográfico; corregir con un número inventado sería presentar una suposición como dato.
 
 Reglas (implementadas en `src/domain/models/supuestos.py`):
-- Un factor de **literatura** solo cuenta con fuente si la tiene en el YAML; si el usuario escribe otro valor, se registra como
-  "ingresado por el usuario" y **sigue** marcado `TODO(fuente)`.
-- Un **dato** del lote (plantas) cuenta como fuente cuando lo ingresa el usuario.
-- Mientras `muestreo.definido: false` y `validado_con_cosecha_real: false`, el reporte lo advierte.
+- **literatura**: solo cuenta con fuente si la tiene en el YAML; si el usuario escribe otro valor se registra como "ingresado por
+  el usuario" y se advierte que no tiene fuente documental (el mismo valor documentado conserva la fuente).
+- **calibración**: no se "ingresa", se mide; mientras no haya calibración se advierte siempre.
+- **dato**: cuenta como fuente cuando lo ingresa el usuario.
 
-## Limitaciones declaradas
+## Limitaciones declaradas (se muestran en cada resultado)
 
-1. Supone que la foto cubre completas las `plantas_muestra` plantas: la unidad de muestreo **no está definida**.
-2. La oclusión es una constante, no una corrección calibrada; no hay intervalo de confianza.
-3. No se distingue "potencial total" de "cosechable ahora" (todas las cerezas detectadas cuentan igual).
-4. Sin kg cosechados reales, el resultado **no está validado** (error porcentual y sesgo desconocidos).
+1. **Un solo peso y un solo factor para todos los estados de madurez.** La conversión cereza→pergamino cambia mucho con la
+   madurez (Marín-López et al., 2003: de 5,04:1 en maduro a más de 11:1 en verde) y un fruto sobremaduro pesa ~12 % menos que uno
+   maduro (Sanz-Uribe et al., 2018). No se usan factores por estado porque implicaría combinar estudios con diseños distintos.
+2. **Tres contextos distintos:** parámetros de variedad Colombia en Caldas (2005); detector entrenado con fotos de Uganda (Croppie);
+   uso previsto en Norte de Santander. Nada está calibrado para la zona.
+3. **Oclusión sin corregir:** el conteo solo incluye cerezas visibles.
+4. **Unidad de muestreo sin definir:** se supone que las fotos cubren completas las `plantas_muestra` plantas.
+5. **Sin validación con cosecha real** (error porcentual y sesgo desconocidos).
 
-## Cómo completarlo (cuando el equipo tenga las fuentes)
+## Calibración local propuesta (trabajo futuro)
 
-Editar `configs/agronomia.yaml`: poner `valor`, `fuente` (cita breve; la referencia completa en el informe) e `incertidumbre`;
-cambiar `muestreo.definido` a `true` con la descripción del protocolo. No hay que tocar código.
+Ver la sección 7 de la investigación: pesar ≥ 100 frutos por variedad y estado de madurez; beneficiar y secar muestras pesadas
+para obtener el factor local; comparar conteo automático con conteo manual en imágenes representativas, calibrando en unas y
+evaluando en otras. Al tener los valores, basta editar `configs/agronomia.yaml` (valor, fuente, incertidumbre, estado y
+`calibrado_localmente: true`); no hay que tocar código.
+
+## Referencias (formato IEEE)
+
+[1] J. Montilla-Pérez, J. Arcila-Pulgarín, M. Aristizábal-Loaiza, E. C. Montoya-Restrepo, G. I. Puerta-Quintero, C. E. Oliveros-Tascón y G. Cadena-Gómez, "Caracterización de algunas propiedades físicas y factores de conversión del café durante el proceso de beneficio húmedo tradicional," *Cenicafé*, vol. 59, no. 2, pp. 120–142, 2008.
+
+[2] S. M. Marín-López, J. Arcila-Pulgarín, E. C. Montoya-Restrepo y C. E. Oliveros-Tascón, "Relación entre el estado de madurez del fruto del café y las características de beneficio, rendimiento y calidad de la bebida," *Cenicafé*, vol. 54, no. 4, pp. 297–315, 2003.
+
+[3] M. R. Salazar-Gutiérrez, B. Chaves-Córdoba, N. M. Riaño-Herrera, J. Arcila-Pulgarín y A. Jaramillo-Robledo, "Crecimiento del fruto de café *Coffea arabica* L. var. Colombia," *Cenicafé*, vol. 45, no. 2, pp. 41–50, 1994.
+
+[4] J. R. Sanz-Uribe, C. E. Oliveros-Tascón, H. Duque Orrego, C. G. Mejía, P. Benavides Machado y R. Medina-Rivera, "Retención de pases: Una opción para mejorar la productividad de la mano de obra en la cosecha de café," *Avances Técnicos Cenicafé*, no. 488, pp. 1–8, 2018, doi: 10.38141/10779/0488.
+
+[5] Centro Nacional de Investigaciones de Café (Cenicafé), *Cartilla 19: Recolección del café*, Cartillas Cafeteras, 2004.
+
+Las referencias provienen de la investigación del equipo; solo [1] se verificó contra el PDF original durante el desarrollo.

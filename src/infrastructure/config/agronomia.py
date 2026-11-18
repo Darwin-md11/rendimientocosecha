@@ -6,10 +6,19 @@ from typing import Optional
 import yaml
 
 from ...domain.exceptions.domain_exceptions import ParametrosInvalidosException
+from ...domain.models.coffee_cherry import EstadoMadurez
 from ...domain.models.supuestos import CLAVES_PARAMETROS, CatalogoSupuestos, Supuesto
 
 RUTA_AGRONOMIA = Path(__file__).resolve().parents[3] / "configs" / "agronomia.yaml"
 _CAMPOS = ("descripcion", "tipo", "valor", "unidad")
+
+
+def _estados(nombres, ruta: Path):
+    validos = {e.value for e in EstadoMadurez}
+    for n in nombres:
+        if n not in validos:
+            raise ParametrosInvalidosException(f"{ruta.name}: estado cosechable desconocido {n!r} (use {sorted(validos)})")
+        yield n
 
 
 def cargar_catalogo(ruta: Optional[Path] = None) -> CatalogoSupuestos:
@@ -36,6 +45,7 @@ def cargar_catalogo(ruta: Optional[Path] = None) -> CatalogoSupuestos:
                 f["unidad"],
                 f.get("fuente"),
                 f.get("incertidumbre"),
+                f.get("estado"),
             )
         except ValueError as e:
             raise ParametrosInvalidosException(f"{ruta.name}: {e}") from e
@@ -48,6 +58,11 @@ def cargar_catalogo(ruta: Optional[Path] = None) -> CatalogoSupuestos:
             supuesto_muestreo=muestreo.get("supuesto", ""),
             validado_con_cosecha_real=bool(cfg.get("validado_con_cosecha_real", False)),
             origen=str(ruta.name),
+            version_parametros=cfg.get("version_parametros"),
+            calibrado_localmente=bool(cfg.get("calibrado_localmente", False)),
+            simplificaciones=tuple(cfg.get("simplificaciones") or ()),
+            estados_cosechables=tuple(_estados(cfg.get("estados_cosechables") or (), ruta)),
+            fuente_estados_cosechables=cfg.get("fuente_estados_cosechables"),
         )
     except ValueError as e:
         raise ParametrosInvalidosException(f"{ruta.name}: {e}") from e
