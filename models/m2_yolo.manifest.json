@@ -1,0 +1,34 @@
+{
+  "archivo": "m2_yolo.pt",
+  "sha256": "c5b8838a11fed1523db13eb37419ed8ace6107f166b517be63c88984e6b2cac9",
+  "familia": "M2",
+  "nombre": "YOLO (yolo11n.pt, 640 px) – croppie",
+  "framework": "ultralytics",
+  "version_framework": "8.4.215",
+  "clases": [
+    "VERDE",
+    "PINTON",
+    "MADURO",
+    "SOBREMADURO"
+  ],
+  "imgsz": 640,
+  "iou_nms": 0.6,
+  "datos_entrenamiento": "croppie (CC BY-SA 4.0 (según la ficha del dataset; verificar al citar)), partición train, versión 9dbcf58b2881",
+  "validado_con_datos_reales": true,
+  "dominio_validacion": "croppie partición test (1258 imágenes), corrida m2_yolo11n_640_s0_20261116-1754",
+  "validado_en_dominio_objetivo": false,
+  "corrida_id": "m2_yolo11n_640_s0_20261116-1754",
+  "commit": "803c3279532b2ff1d2321d37f966c826d1b4a77d",
+  "semilla": 0,
+  "fecha_entrenamiento": "2026-11-16",
+  "url_descarga": "https://github.com/Darwin-md11/rendimientocosecha/releases/download/modelo-m2-v1/m2_yolo.pt",
+  "metricas_test": {
+    "map50": 0.6029367350314432,
+    "map50_95": 0.4244568107879333,
+    "f1": 0.8087778685654254,
+    "mae_conteo": 1.924483306836248,
+    "r2_conteo": 0.9585250192053549
+  },
+  "release_tag": "modelo-m2-v1",
+  "licencia": "TODO(fuente): pendiente de verificar; ver docs/legal.md (Ultralytics y Croppie CC BY-SA 4.0)"
+}
