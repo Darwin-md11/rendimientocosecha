@@ -12,7 +12,7 @@ datasets:
     clases_origen: {0: dark_brown_cherry, 1: green_cherry, 2: low_visibility_unsure, 3: red_cherry, 4: yellow_cherry}
     mapeo:
       green_cherry: VERDE
-      yellow_cherry: PINTON        # SUPUESTO pendiente de confirmar por el equipo (variedades amarillas maduras)
+      yellow_cherry: PINTON        # decisión del equipo (2026-11-18): la cereza amarilla se trata como estado de transición
       red_cherry: MADURO
       dark_brown_cherry: SOBREMADURO
       low_visibility_unsure: null  # se excluye: el propio dataset la marca como dudosa

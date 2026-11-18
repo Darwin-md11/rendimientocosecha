@@ -47,7 +47,7 @@ el **F1 macro** es la métrica de comparación.
 ## 4. Lectura y limitaciones (para el capítulo 8.4)
 
 - **PINTÓN es la clase más difícil en todos los modelos** (F1 0,39–0,50; AP 0,257 en M2): es la transición entre verde y rojo y
-  además depende del supuesto amarilla→PINTÓN del mapeo de clases (pendiente de confirmar). SOBREMADURO es escasa (2,8 % del test).
+  además depende del mapeo amarilla→PINTÓN (decisión del equipo; en variedades de fruto amarillo la cereza amarilla podría estar madura). SOBREMADURO es escasa (2,8 % del test).
 - M1 tiene **recall alto y precisión baja** en las clases minoritarias (PINTÓN 0,715 / 0,380): efecto de los pesos por clase.
 - Las cifras de test son iguales o algo mejores que las de validación: no hay señal de que elegir hiperparámetros en val haya
   inflado los resultados. La mezcla de clases cambia entre particiones (sesiones de distintas fechas de la cosecha).

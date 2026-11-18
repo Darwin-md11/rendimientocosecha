@@ -39,6 +39,7 @@
 | 2026-11-15 | Se mantiene Gradio | ADR-006 |
 | 2026-11-15 | `src/` (app) separado de `ml/` (laboratorio) | ADR-005 |
 | 2026-11-15 | Dataset para M2: Croppie (CC BY-SA 4.0); partición 70/15/15 por foto original; low_visibility excluida y enmascarada | docs/datasets.md |
+| 2026-11-18 | Cereza amarilla (Croppie `yellow_cherry`) = PINTÓN | configs/clases.yaml |
 | 2026-11-15 | Métricas comunes propias (COCO 101 puntos) como cifra principal; mAP de Ultralytics como referencia | ADR-007 (propuesta) |
 | 2026-11-15 | Procedencia en tres niveles: no validado / validado en otro dominio / validado en la región | ADR-008 |
 
@@ -47,7 +48,7 @@
 - [ ] **Unidad de muestreo** (qué cubre una foto: rama, lado de planta, planta): sin definir. Bloquea la cadena de rendimiento completa de la Fase 1.
 - [ ] **Estimación con varias fotos**: sin definir (requiere visto bueno del docente). Mientras tanto, una imagen a la vez.
 - [ ] Documento fuente de los factores agronómicos (Cenicafé/FNC): peso por fruto, frutos por rama, ramas por planta, densidad, factor cereza→pergamino.
-- [ ] **Confirmar mapeo amarilla → PINTÓN** (Croppie `yellow_cherry`).
+- [x] Mapeo amarilla → PINTÓN confirmado por el equipo (2026-11-18).
 - [ ] Ejecutar `ml/notebooks/m2_yolo_colab.ipynb` en Colab y pegar las salidas 📋.
 - [ ] Fotos propias con conteo manual (15–20) para la evaluación en la región y el R² frente a conteo manual.
 - [ ] PDF del artículo de revisión sistemática (no se recibió).

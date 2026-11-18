@@ -11,4 +11,4 @@
 
 **Atribución Croppie (obligatoria por CC BY-SA):** "Croppie © 2024 by Producers Direct and Alliance Bioversity & CIAT", financiado por GIZ (Fair Forward – AI for All). La licencia *ShareAlike* implica que los datos derivados (p. ej. el dataset re-particionado) deben compartirse con la misma licencia; los pesos del modelo entrenado: consultar con el docente (ver `docs/legal.md`, pendiente).
 
-**Mapeo de clases** (`configs/clases.yaml`): green→VERDE, yellow→PINTÓN (**supuesto pendiente de confirmar**: en variedades de fruto amarillo, la cereza amarilla puede estar madura), red→MADURO, dark_brown→SOBREMADURO, low_visibility_unsure→excluida (su región se enmascara en la imagen).
+**Mapeo de clases** (`configs/clases.yaml`): green→VERDE, yellow→PINTÓN (**decisión del equipo, 2026-11-18**: la cereza amarilla se trata como transición; limitación: en variedades de fruto amarillo podría estar madura), red→MADURO, dark_brown→SOBREMADURO, low_visibility_unsure→excluida (su región se enmascara en la imagen).
