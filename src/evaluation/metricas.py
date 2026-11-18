@@ -176,6 +176,15 @@ def metricas_clasificacion(y_real, y_pred, n_clases: int = 4) -> dict:
     y_real, y_pred = np.asarray(y_real, dtype=int), np.asarray(y_pred, dtype=int)
     m = np.zeros((n_clases, n_clases), dtype=int)
     np.add.at(m, (y_real, y_pred), 1)
+    return metricas_clasificacion_desde_matriz(m)
+
+
+def metricas_clasificacion_desde_matriz(m) -> dict:
+    """Exactitud, P/R/F1 por clase y F1 macro desde una matriz de confusión (filas = real, columnas = predicho).
+    Para M2: use la parte de cajas emparejadas de matriz_confusion_deteccion (sin la fila/columna "fondo"),
+    así se mide la madurez solo en las cerezas bien localizadas, comparable con M0/M1 sobre recortes."""
+    m = np.asarray(m, dtype=int)
+    n_clases = m.shape[0]
     por_clase = {}
     for c in range(n_clases):
         tp, fp, fn = int(m[c, c]), int(m[:, c].sum() - m[c, c]), int(m[c, :].sum() - m[c, c])

@@ -26,52 +26,19 @@ import numpy as np
 import yaml
 from PIL import Image, ImageOps
 
+from ml.datos.lectura_yolo import ESTADOS, NOMBRES, cajas_gt, imagenes_y_etiquetas
 from ml.experiments.registro import capturar_entorno, guardar_json
-from src.domain.models.coffee_cherry import EstadoMadurez
 from src.evaluation import metricas as M
-from src.infrastructure.adapters.detectors.yolo_detector_adapter import YoloFruitDetectorAdapter, normalizar_nombre_clase
+from src.infrastructure.adapters.detectors.yolo_detector_adapter import YoloFruitDetectorAdapter
 from src.infrastructure.ml.manifiesto import ruta_manifiesto
 
-ESTADOS = list(EstadoMadurez)
-NOMBRES = [e.value for e in ESTADOS]
 CONF_MAP = 0.001  # umbral bajo para la curva precisión-recall (mAP)
-
-
-def _imagenes_y_etiquetas(data_yaml: Path, split: str):
-    data = yaml.safe_load(Path(data_yaml).read_text(encoding="utf-8"))
-    raiz = Path(data.get("path", Path(data_yaml).parent))
-    carpeta = raiz / data[split]
-    nombres = data["names"]
-    nombres = [nombres[i] for i in sorted(nombres)] if isinstance(nombres, dict) else list(nombres)
-    a_estado = {i: NOMBRES.index(normalizar_nombre_clase(n)) for i, n in enumerate(nombres) if normalizar_nombre_clase(n) in NOMBRES}
-    partes = list(Path(data[split]).parts)
-    partes = ["labels" if x == "images" else x for x in partes]  # convención YOLO: images/... -> labels/...
-    carpeta_lbl = raiz.joinpath(*partes)
-    imagenes = sorted(p for p in carpeta.iterdir() if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".bmp", ".webp"})
-    for img in imagenes:
-        yield img, carpeta_lbl / (img.stem + ".txt"), a_estado
-
-
-def _gt(lbl: Path, ancho: int, alto: int, a_estado: dict):
-    cajas, clases = [], []
-    if lbl.is_file():
-        for linea in lbl.read_text(encoding="utf-8").splitlines():
-            if not linea.strip():
-                continue
-            c, cx, cy, w, h = linea.split()
-            c = int(float(c))
-            if c not in a_estado:
-                continue
-            cx, cy, w, h = float(cx) * ancho, float(cy) * alto, float(w) * ancho, float(h) * alto
-            cajas.append([cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2])
-            clases.append(a_estado[c])
-    return np.asarray(cajas, float).reshape(-1, 4), np.asarray(clases, int)
 
 
 def evaluar(detector, data_yaml: Path, split: str, conf_reporte: float = 0.25, n_calentamiento: int = 3):
     imagenes: List[M.ImagenEval] = []
     filas, predicciones, tiempos = [], [], []
-    for k, (ruta, lbl, a_estado) in enumerate(_imagenes_y_etiquetas(data_yaml, split)):
+    for k, (ruta, lbl, a_estado) in enumerate(imagenes_y_etiquetas(data_yaml, split)):
         with Image.open(ruta) as im:
             img = ImageOps.exif_transpose(im).convert("RGB")  # igual que el caso de uso de la app
         t0 = time.perf_counter()
@@ -79,7 +46,7 @@ def evaluar(detector, data_yaml: Path, split: str, conf_reporte: float = 0.25, n
         dt = time.perf_counter() - t0
         if k >= n_calentamiento:
             tiempos.append(dt)
-        gt_cajas, gt_clases = _gt(lbl, img.width, img.height, a_estado)
+        gt_cajas, gt_clases = cajas_gt(lbl, img.width, img.height, a_estado)
         pc = np.asarray([[d.bbox.x_min, d.bbox.y_min, d.bbox.x_max, d.bbox.y_max] for d in dets], float).reshape(-1, 4)
         pf = np.asarray([d.confianza for d in dets], float)
         pk = np.asarray([ESTADOS.index(d.estado) for d in dets], int)
@@ -104,6 +71,7 @@ def evaluar(detector, data_yaml: Path, split: str, conf_reporte: float = 0.25, n
         "map50": map50["map"], "map50_95": map_coco["map"],
         "ap50_por_clase": {NOMBRES[c]: v[0] for c, v in map50["ap_por_clase"].items()},
         "deteccion": det, "matriz_confusion": {"filas_real_columnas_pred": NOMBRES + ["fondo"], "valores": matriz.tolist()},
+        "clasificacion_en_cajas_emparejadas": M.metricas_clasificacion_desde_matriz(matriz[: len(NOMBRES), : len(NOMBRES)]),
         "conteo": {"nota": "conteo_anotado = cajas etiquetadas en el dataset (proxy del conteo manual en campo)", "total": conteo, "por_clase": conteo_por_clase},
         "tiempo_inferencia_s": {"mediana": statistics.median(tiempos) if tiempos else None, "n": len(tiempos), "calentamiento": n_calentamiento},
     }
@@ -175,6 +143,7 @@ Imágenes: {met['imagenes']} · cerezas anotadas: {met['cerezas_anotadas']} · m
 | Precisión / Recall / F1 (solo localización) | {f(d['localizacion']['precision'])} / {f(d['localizacion']['recall'])} / {f(d['localizacion']['f1'])} |
 | Conteo por imagen: MAE / RMSE / sesgo | {f(c['mae'])} / {f(c['rmse'])} / {f(c['sesgo_medio'])} |
 | Conteo por imagen: R² / r² Pearson | {f(c['r2'])} / {f(c['r2_pearson'])} |
+| Clasificación de madurez en cerezas bien localizadas: exactitud / F1 macro | {f(met['clasificacion_en_cajas_emparejadas']['exactitud'])} / {f(met['clasificacion_en_cajas_emparejadas']['f1_macro'])} |
 | Tiempo de inferencia (mediana, s/imagen) | {f(met['tiempo_inferencia_s']['mediana'])} |
 
 | Clase | AP@0,5 | Precisión | Recall | F1 |

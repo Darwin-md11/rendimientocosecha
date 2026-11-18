@@ -10,8 +10,9 @@
 | 0 — Línea base, honestidad y orden del repo | ✔ código y pruebas listos; **pendiente:** Release del modelo y *push* | `fase-0-honestidad` |
 | 1 — Módulo de rendimiento (versión mínima) | pendiente (después de M2) | — |
 | 2 — Datos (Croppie) | ✔ script de preparación listo; **pendiente:** ejecutarlo en Colab | `fase-2-3-croppie-yolo` |
-| 3 — M2 YOLO | ✔ entrenamiento, evaluación, adaptador y notebook listos; **pendiente:** entrenar en Colab (equipo) | `fase-2-3-croppie-yolo` |
-| 3 — M0 / M1 | pendientes (recortes de las cajas de Croppie) | — |
+| 3 — M2 YOLO | ✔ entrenado (corrida `m2_yolo11n_640_s0_20261116-1754`); **pendiente:** evaluación propia en val, test final | `fase-2-3-croppie-yolo` |
+| 3 — M0 | ✔ script listo (RF y SVM, CV por sesión); **pendiente:** ejecutar en Colab (CPU) | `fase-2-3-croppie-yolo` |
+| 3 — M1 | pendiente | — |
 | 4 — Evaluación | ✔ métricas comunes listas; tablas de M2 se generan al evaluar | `fase-2-3-croppie-yolo` |
 | 5–6 — Prototipo final y cierre | — | — |
 
@@ -71,3 +72,17 @@
 - `YoloFruitDetectorAdapter` + composición (`SIKAFE_DETECTOR=yolo`, por defecto si existe su manifiesto).
 - `ml/m2_yolo/entrenar.py` y `evaluar.py` (test una sola vez con `--final`), configs 640/960, `ml/notebooks/m2_yolo_colab.ipynb`.
 - **No ejecutado con Ultralytics real** (sin GPU/PyTorch en el entorno de desarrollo): probado con un modelo simulado. Las cifras reales saldrán del notebook.
+
+### 2026-11-16/17 — Datos preparados y M2 entrenado (Colab, T4)
+
+- Inspección de Croppie: 8 333 recortes 480×640 de 1 262 fotos (marca de tiempo en el nombre), 17 días (2023-06-22 a 2023-07-20).
+  **La partición original del dataset tiene fuga:** 616 de 1 262 fotos tienen recortes en su train y su val → no se usa.
+- Partición propia por **sesión de captura** (umbral automático 15 min: 60 sesiones, la mayor con 7,8 % de las imágenes):
+  train 5 960 / val 1 115 / test 1 258 imágenes (40/12/8 sesiones); prueba de fuga OK; dataset `9dbcf58b…`.
+  La mezcla de clases cambia entre particiones (test: 50 % VERDE, 2,8 % SOBREMADURO; train: 31 % y 4,8 %) → reportar por clase.
+- M2 YOLO11n 640 px, 60 épocas (1,6 h en T4; la parada temprana no se activó), Ultralytics 8.4.215, torch 2.14.1+cu130.
+  Validación según Ultralytics (cifras pegadas por el equipo; fuente: `metricas_val_ultralytics.json` de la corrida):
+  mAP@0,5 0,673 · mAP@0,5:0,95 0,450 · P 0,702 · R 0,658; por clase mAP@0,5: MADURO 0,894, VERDE 0,826, SOBREMADURO 0,508, PINTÓN 0,466.
+  Optimista (el mejor modelo se eligió en val). Pendiente: métricas propias (`evaluar --split val`) y test final.
+- M0: `ml/m0_clasico/` (descriptor HSV/Lab/LBP/HOG de 442 dimensiones, RF y SVM, CV por sesión, test único). Pendiente ejecutarlo.
+- Métricas: clasificación de madurez en cajas emparejadas para M2 (comparable con M0/M1 sobre recortes).

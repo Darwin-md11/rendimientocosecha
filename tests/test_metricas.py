@@ -94,3 +94,13 @@ def test_conteo_a_mano():
     assert r2["r2_pearson"] == pytest.approx(1.0) and r2["r2"] < 0
     with pytest.raises(ValueError):
         M.metricas_conteo([1, 2], [1])
+
+
+def test_clasificacion_desde_matriz_coincide_con_etiquetas():
+    a = M.metricas_clasificacion([0, 0, 1, 1, 2, 3], [0, 1, 1, 1, 2, 2], n_clases=4)
+    b = M.metricas_clasificacion_desde_matriz(a["matriz_confusion"])
+    assert a == b
+    # Desde la matriz de detección: solo las cajas emparejadas (sin "fondo")
+    det = np.array([[5, 1, 0, 0, 2], [0, 3, 0, 0, 1], [0, 1, 4, 0, 0], [0, 0, 1, 2, 3], [1, 0, 0, 0, 0]])
+    r = M.metricas_clasificacion_desde_matriz(det[:4, :4])
+    assert r["exactitud"] == pytest.approx(14 / 17) and r["por_clase"][3]["recall"] == pytest.approx(2 / 3)
