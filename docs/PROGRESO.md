@@ -13,6 +13,7 @@
 | 3 — M2 YOLO | ✔ entrenado (corrida `m2_yolo11n_640_s0_20261116-1754`); **pendiente:** evaluación propia en val, test final | `fase-2-3-croppie-yolo` |
 | 3 — M0 | ✔ script listo (RF y SVM, CV por sesión); **pendiente:** ejecutar en Colab (CPU) | `fase-2-3-croppie-yolo` |
 | 3 — M1 | pendiente | — |
+| CUDA (requisito del curso) | ✔ kernel del descriptor de M0 + comparación CPU/GPU de YOLO; **pendiente:** ejecutar en Colab | `fase-2-3-croppie-yolo` |
 | 4 — Evaluación | ✔ métricas comunes listas; tablas de M2 se generan al evaluar | `fase-2-3-croppie-yolo` |
 | 5–6 — Prototipo final y cierre | — | — |
 
@@ -86,3 +87,10 @@
   Optimista (el mejor modelo se eligió en val). Pendiente: métricas propias (`evaluar --split val`) y test final.
 - M0: `ml/m0_clasico/` (descriptor HSV/Lab/LBP/HOG de 442 dimensiones, RF y SVM, CV por sesión, test único). Pendiente ejecutarlo.
 - Métricas: clasificación de madurez en cajas emparejadas para M2 (comparable con M0/M1 sobre recortes).
+
+### 2026-11-17 — CUDA (opciones 1 + 2, ADR-009)
+
+- Descriptor de M0 v2 (especificación propia) en CPU (numpy) y GPU (kernel CUDA con Numba, un hilo por recorte); verificado en CPU.
+- `ml/benchmark/cuda_m0.py` (equivalencia + aceleración sobre recortes reales) y `ml/benchmark/yolo_cpu_gpu.py`.
+- **No ejecutado en GPU** (el entorno de desarrollo no tiene GPU ni Numba): pendiente correr las celdas CUDA en Colab.
+- M2, procedencia confirmada por el equipo: commit 803c327, dataset 9dbcf58b…, pesos SHA-256 c5b8838a…, T4.

@@ -151,7 +151,7 @@ def test_toda_la_lectura_y_escritura_de_texto_declara_utf8():
 
 
 # Se importan solo dentro de funciones y las pruebas los simulan (requirements-ml.txt / Colab).
-_OPCIONALES = {"torch", "ultralytics", "huggingface_hub", "google"}
+_OPCIONALES = {"torch", "ultralytics", "huggingface_hub", "google", "numba"}
 _PAQUETE = {"PIL": "pillow", "yaml": "pyyaml", "sklearn": "scikit-learn", "skimage": "scikit-image"}
 
 
@@ -169,7 +169,7 @@ def _requisitos(archivo: Path) -> set:
 def test_toda_libreria_importada_esta_en_requirements_dev():
     """Lo que el código y las pruebas importan debe instalarse con requirements-dev.txt (si no, falla en otro computador o en la CI)."""
     declarados = _requisitos(RAIZ / "requirements-dev.txt")
-    propios = {"src", "ml", "contrato_detector", "test_preparar_yolo", "test_yolo_adapter", "conftest"}
+    propios = {"src", "ml", "contrato_detector", "test_preparar_yolo", "test_yolo_adapter", "test_m0_clasico", "conftest"}
     faltan = set()
     for carpeta in ("src", "ml", "tests", "scripts"):
         for archivo in (RAIZ / carpeta).rglob("*.py"):

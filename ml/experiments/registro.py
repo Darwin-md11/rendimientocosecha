@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Optional
 
 RAIZ = Path(__file__).resolve().parents[2]
-PAQUETES = ("ultralytics", "torch", "torchvision", "numpy", "scikit-learn", "pillow", "opencv-python", "pyyaml")
+PAQUETES = ("ultralytics", "torch", "torchvision", "numba", "numpy", "scikit-learn", "pillow", "opencv-python", "pyyaml")
 
 
 def _version(paquete: str) -> Optional[str]:

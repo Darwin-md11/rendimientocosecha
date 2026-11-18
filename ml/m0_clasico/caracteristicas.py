@@ -1,62 +1,22 @@
 """
-Descriptor de M0 (línea base clásica): color + textura de un recorte de cereza.
+Características de M0 sobre recortes de cerezas (interfaz usada por ml/m0_clasico/entrenar.py).
 
-Bloques (todos sobre el recorte reescalado a LADO x LADO px):
-  - Histograma HSV: 16 bins por canal (48)
-  - Histograma Lab: 16 bins por canal (48)
-  - Media y desviación de H, S, V, L, a, b (12)
-  - LBP uniforme (P=8, R=1) sobre la escala de grises: 10 bins (10)
-  - HOG: 9 orientaciones, celdas de 12 px, bloques 2x2 (324)
-Total: 442 dimensiones.
+El descriptor (color HSV/Lab + LBP + HOG, 442 dimensiones) está especificado e implementado en
+ml/m0_clasico/descriptor.py (CPU, numpy) y ml/m0_clasico/descriptor_cuda.py (GPU, CUDA). Ambas
+versiones ejecutan el mismo algoritmo; la elección de dispositivo solo cambia el tiempo.
 
-Esta función es deliberadamente una pieza aislada y versionada: es el paso costoso de M0
-(un recorte por cereza) y el candidato natural para acelerarse con CUDA o repartirse con MPI.
-Cualquier implementación alternativa debe dar el mismo vector (ver pruebas).
+Historial: la versión 1 usaba scikit-image (rgb2hsv, local_binary_pattern, hog); se reemplazó por la
+versión 2, de especificación propia, para poder implementarla idéntica en CUDA (scikit-image no
+publica el código de LBP/HOG en Python y su algoritmo no se puede replicar con garantía).
 """
 
-from typing import Iterable, List, Tuple
+from typing import Iterable
 
 import numpy as np
-from PIL import Image
-from skimage.color import rgb2hsv, rgb2lab
-from skimage.feature import hog, local_binary_pattern
 
-VERSION_DESCRIPTOR = 1
-LADO = 48
-BINS = 16
-NOMBRES_BLOQUES: List[Tuple[str, int]] = [("hsv_hist", 48), ("lab_hist", 48), ("media_desv", 12), ("lbp", 10), ("hog", 324)]
-DIMENSION = sum(n for _, n in NOMBRES_BLOQUES)
+from .descriptor import DIMENSION, VERSION_DESCRIPTOR, descriptor_lote_numpy, preparar_recorte
 
-# Rangos de cada canal para los histogramas
-_RANGO_HSV = [(0.0, 1.0)] * 3
-_RANGO_LAB = [(0.0, 100.0), (-128.0, 127.0), (-128.0, 127.0)]
-
-
-def _histogramas(canales: np.ndarray, rangos) -> np.ndarray:
-    n = canales.shape[0] * canales.shape[1]
-    return np.concatenate([np.histogram(canales[..., c], bins=BINS, range=rangos[c])[0] / n for c in range(3)]).astype(np.float32)
-
-
-def caracteristicas_recorte(recorte_rgb: np.ndarray) -> np.ndarray:
-    """recorte_rgb: uint8 (alto, ancho, 3). Devuelve un vector float32 de DIMENSION."""
-    img = Image.fromarray(np.ascontiguousarray(recorte_rgb, dtype=np.uint8)).resize((LADO, LADO), Image.BILINEAR)
-    rgb = np.asarray(img, dtype=np.float64) / 255.0
-    hsv = rgb2hsv(rgb)
-    lab = rgb2lab(rgb)
-    gris = rgb @ np.array([0.299, 0.587, 0.114])
-    lbp = local_binary_pattern((gris * 255).astype(np.uint8), P=8, R=1, method="uniform")
-    hist_lbp = np.histogram(lbp, bins=10, range=(0, 10))[0] / lbp.size
-    vec = np.concatenate(
-        [
-            _histogramas(hsv, _RANGO_HSV),
-            _histogramas(lab, _RANGO_LAB),
-            np.concatenate([hsv.reshape(-1, 3).mean(0), hsv.reshape(-1, 3).std(0), lab.reshape(-1, 3).mean(0), lab.reshape(-1, 3).std(0)]),
-            hist_lbp,
-            hog(gris, orientations=9, pixels_per_cell=(12, 12), cells_per_block=(2, 2), feature_vector=True),
-        ]
-    ).astype(np.float32)
-    assert vec.shape == (DIMENSION,)
-    return vec
+__all__ = ["DIMENSION", "VERSION_DESCRIPTOR", "caracteristicas_recorte", "descriptor_lote", "extraer_lote", "preparar_recorte", "recortar"]
 
 
 def recortar(imagen: np.ndarray, caja_xyxy, margen: float = 0.10) -> np.ndarray:
@@ -69,6 +29,23 @@ def recortar(imagen: np.ndarray, caja_xyxy, margen: float = 0.10) -> np.ndarray:
     return imagen[y0:y1, x0:x1]
 
 
-def extraer_lote(recortes: Iterable[np.ndarray]) -> np.ndarray:
+def descriptor_lote(imgs48: np.ndarray, dispositivo: str = "cpu", tiempos: dict = None) -> np.ndarray:
+    """imgs48 uint8 (N, 48, 48, 3) ya reescalados -> float32 (N, 442)."""
+    if dispositivo == "gpu":
+        from .descriptor_cuda import descriptor_lote_cuda
+
+        return descriptor_lote_cuda(imgs48, tiempos=tiempos).astype(np.float32)
+    if dispositivo != "cpu":
+        raise ValueError(f"dispositivo desconocido: {dispositivo!r} (cpu o gpu)")
+    return descriptor_lote_numpy(imgs48).astype(np.float32)
+
+
+def caracteristicas_recorte(recorte_rgb: np.ndarray) -> np.ndarray:
+    return descriptor_lote(preparar_recorte(recorte_rgb)[None])[0]
+
+
+def extraer_lote(recortes: Iterable[np.ndarray], dispositivo: str = "cpu") -> np.ndarray:
     recortes = list(recortes)
-    return np.stack([caracteristicas_recorte(r) for r in recortes]) if recortes else np.zeros((0, DIMENSION), np.float32)
+    if not recortes:
+        return np.zeros((0, DIMENSION), np.float32)
+    return descriptor_lote(np.stack([preparar_recorte(r) for r in recortes]), dispositivo)

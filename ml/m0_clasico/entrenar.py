@@ -38,7 +38,7 @@ from sklearn.svm import SVC
 
 from ml.datos.lectura_yolo import NOMBRES, cajas_gt, grupos_por_archivo, imagenes_y_etiquetas, version_dataset
 from ml.experiments.registro import capturar_entorno, guardar_json, id_corrida
-from ml.m0_clasico.caracteristicas import DIMENSION, VERSION_DESCRIPTOR, caracteristicas_recorte, recortar
+from ml.m0_clasico.caracteristicas import DIMENSION, VERSION_DESCRIPTOR, descriptor_lote, preparar_recorte, recortar
 from src.evaluation import metricas as M
 from src.infrastructure.ml.manifiesto import ruta_manifiesto, sha256_archivo, verificar_archivo
 
@@ -49,12 +49,24 @@ GRILLAS: Dict[str, List[dict]] = {
 
 
 # ------------------------------------------------------------------ características
-def extraer_split(data_yaml: Path, split: str, margen: float = 0.10, lado_min: int = 3) -> dict:
+def extraer_split(data_yaml: Path, split: str, margen: float = 0.10, lado_min: int = 3, dispositivo: str = "cpu", lote: int = 4096) -> dict:
+    """Recorta cada caja anotada, la reescala a 48x48 (CPU) y calcula el descriptor por lotes en CPU o GPU."""
     grupos = grupos_por_archivo(data_yaml)
-    X, y, g, imgs = [], [], [], []
+    bloques, y, g, imgs, pendientes = [], [], [], [], []
     omitidos = 0
+    t_prep = t_desc = 0.0
     t0 = time.perf_counter()
+
+    def _vaciar():
+        nonlocal t_desc
+        if pendientes:
+            a = time.perf_counter()
+            bloques.append(descriptor_lote(np.stack(pendientes), dispositivo))
+            t_desc += time.perf_counter() - a
+            pendientes.clear()
+
     for ruta, lbl, a_estado in imagenes_y_etiquetas(data_yaml, split):
+        a = time.perf_counter()
         with Image.open(ruta) as im:
             rgb = np.asarray(ImageOps.exif_transpose(im).convert("RGB"))
         cajas, clases = cajas_gt(lbl, rgb.shape[1], rgb.shape[0], a_estado)
@@ -63,12 +75,16 @@ def extraer_split(data_yaml: Path, split: str, margen: float = 0.10, lado_min: i
             if min(rec.shape[:2]) < lado_min:
                 omitidos += 1
                 continue
-            X.append(caracteristicas_recorte(rec))
+            pendientes.append(preparar_recorte(rec))
             y.append(int(c))
             g.append(grupos.get(ruta.name, ruta.stem))
             imgs.append(ruta.name)
+        t_prep += time.perf_counter() - a
+        if len(pendientes) >= lote:
+            _vaciar()
+    _vaciar()
     dt = time.perf_counter() - t0
-    X = np.stack(X) if X else np.zeros((0, DIMENSION), np.float32)
+    X = np.concatenate(bloques) if bloques else np.zeros((0, DIMENSION), np.float32)
     return {
         "X": X,
         "y": np.asarray(y, int),
@@ -76,36 +92,33 @@ def extraer_split(data_yaml: Path, split: str, margen: float = 0.10, lado_min: i
         "imagenes": np.asarray(imgs),
         "omitidos": omitidos,
         "segundos": dt,
-        "recortes_por_segundo": len(y) / dt if dt else None,
+        "segundos_preparacion": t_prep,
+        "segundos_descriptor": t_desc,
+        "dispositivo": dispositivo,
+        "recortes_por_segundo": len(y) / dt if dt else 0.0,
     }
 
 
-def caracteristicas_con_cache(data_yaml: Path, split: str, carpeta_cache: Path) -> dict:
-    nombre = f"{version_dataset(data_yaml)[:12]}_desc{VERSION_DESCRIPTOR}_{split}.npz"
+_ESCALARES = ("omitidos", "segundos", "segundos_preparacion", "segundos_descriptor", "recortes_por_segundo")
+
+
+def caracteristicas_con_cache(data_yaml: Path, split: str, carpeta_cache: Path, dispositivo: str = "cpu") -> dict:
+    nombre = f"{version_dataset(data_yaml)[:12]}_desc{VERSION_DESCRIPTOR}_{dispositivo}_{split}.npz"
     ruta = carpeta_cache / nombre
     if ruta.is_file():
         d = np.load(ruta, allow_pickle=False)
         print(f"Características de {split} desde caché: {ruta}")
-        return {k: d[k] for k in ("X", "y", "grupos", "imagenes")} | {
-            "omitidos": int(d["omitidos"]),
-            "segundos": float(d["segundos"]),
-            "recortes_por_segundo": float(d["recortes_por_segundo"]),
-            "cache": True,
-        }
-    print(f"Extrayendo características de {split}…")
-    r = extraer_split(data_yaml, split)
+        return (
+            {k: d[k] for k in ("X", "y", "grupos", "imagenes")} | {k: float(d[k]) for k in _ESCALARES} | {"dispositivo": dispositivo, "cache": True}
+        )
+    print(f"Extrayendo características de {split} (descriptor en {dispositivo.upper()})…")
+    r = extraer_split(data_yaml, split, dispositivo=dispositivo)
     carpeta_cache.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(
-        ruta,
-        X=r["X"],
-        y=r["y"],
-        grupos=r["grupos"],
-        imagenes=r["imagenes"],
-        omitidos=r["omitidos"],
-        segundos=r["segundos"],
-        recortes_por_segundo=r["recortes_por_segundo"] or 0.0,
+    np.savez_compressed(ruta, X=r["X"], y=r["y"], grupos=r["grupos"], imagenes=r["imagenes"], **{k: r[k] for k in _ESCALARES})
+    print(
+        f"  {len(r['y'])} recortes en {r['segundos']:.1f} s (preparación {r['segundos_preparacion']:.1f} s, "
+        f"descriptor {r['segundos_descriptor']:.1f} s); omitidos {r['omitidos']}"
     )
-    print(f"  {len(r['y'])} recortes en {r['segundos']:.1f} s ({r['recortes_por_segundo']:.0f} recortes/s); omitidos {r['omitidos']}")
     return r | {"cache": False}
 
 
@@ -225,10 +238,10 @@ def _guardar_reporte(corrida: Path, split: str, met: dict, cfg: dict) -> str:
 
 
 # ------------------------------------------------------------------ flujo
-def entrenar(datos: Path, salida: Path, modelo: str, semilla: int = 0, max_train: int = 30000, folds: int = 3) -> Path:
+def entrenar(datos: Path, salida: Path, modelo: str, semilla: int = 0, max_train: int = 30000, folds: int = 3, dispositivo: str = "cpu") -> Path:
     cache = Path(salida) / "cache_m0"
-    tr = caracteristicas_con_cache(datos, "train", cache)
-    va = caracteristicas_con_cache(datos, "val", cache)
+    tr = caracteristicas_con_cache(datos, "train", cache, dispositivo)
+    va = caracteristicas_con_cache(datos, "val", cache, dispositivo)
     if len(np.unique(tr["y"])) < 2:
         raise SystemExit("Train tiene menos de 2 clases: no se puede entrenar M0.")
 
@@ -300,7 +313,7 @@ def evaluar_final(corrida: Path, forzar: bool = False) -> str:
     ruta_modelo = corrida / "modelo_m0.joblib"
     verificar_archivo(ruta_modelo, ("sha256",))  # joblib ejecuta código al cargar: solo archivos propios con hash verificado
     clf = joblib.load(ruta_modelo)
-    te = caracteristicas_con_cache(Path(cfg["datos"]), "test", corrida.parent / "cache_m0")
+    te = caracteristicas_con_cache(Path(cfg["datos"]), "test", corrida.parent / "cache_m0", cfg.get("dispositivo_descriptor", "cpu"))
     met = _evaluar(clf, te)
     resumen = _guardar_reporte(corrida, "test", met, cfg)
     previo = json.loads(registro.read_text(encoding="utf-8")) if registro.is_file() else {"ejecuciones": []}
@@ -317,6 +330,7 @@ def main(argv=None) -> int:
     p.add_argument("--semilla", type=int, default=0)
     p.add_argument("--max-train", type=int, default=30000)
     p.add_argument("--folds", type=int, default=3)
+    p.add_argument("--dispositivo", choices=["cpu", "gpu"], default="cpu", help="dónde calcular el descriptor (gpu = kernel CUDA)")
     p.add_argument("--corrida", type=Path)
     p.add_argument("--final", action="store_true")
     p.add_argument("--forzar", action="store_true")
@@ -328,7 +342,7 @@ def main(argv=None) -> int:
         return 0
     if not (a.datos and a.salida):
         p.error("--datos y --salida son obligatorios")
-    entrenar(a.datos, a.salida, a.modelo, a.semilla, a.max_train, a.folds)
+    entrenar(a.datos, a.salida, a.modelo, a.semilla, a.max_train, a.folds, a.dispositivo)
     return 0
 
 
