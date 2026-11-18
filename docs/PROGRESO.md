@@ -11,7 +11,7 @@
 | 1 — Módulo de rendimiento (versión mínima) | ✔ factores con fuente en `configs/agronomia.yaml`, `TODO(fuente)` visible; **pendiente:** fuentes reales y unidad de muestreo | `fase-2-3-croppie-yolo` |
 | 2 — Datos (Croppie) | ✔ script de preparación listo; **pendiente:** ejecutarlo en Colab | `fase-2-3-croppie-yolo` |
 | 3 — M2 YOLO | ✔ entrenado (corrida `m2_yolo11n_640_s0_20261116-1754`); **pendiente:** evaluación propia en val, test final | `fase-2-3-croppie-yolo` |
-| 3 — M0 | ✔ script listo (RF y SVM, CV por sesión); **pendiente:** ejecutar en Colab (CPU) | `fase-2-3-croppie-yolo` |
+| 3 — M0 | ✔ entrenado (RF y SVM, CV por sesión); **pendiente:** test final | `fase-2-3-croppie-yolo` |
 | 3 — M1 | ✔ entrenado (MobileNetV2, corrida `m1_mobilenetv2_96_s0_20261118-0456`); **pendiente:** test final | `fase-2-3-croppie-yolo` |
 | CUDA (requisito del curso) | ✔ ejecutado en T4: equivalencia OK, 43,6× (kernel vs mejor CPU); YOLO 7,8× | `fase-2-3-croppie-yolo` |
 | 4 — Evaluación | ✔ métricas comunes listas; tablas de M2 se generan al evaluar | `fase-2-3-croppie-yolo` |
@@ -122,3 +122,33 @@
 - Avisos de M1 (float(loss) y orden del planificador con AMP) corregidos después de esta corrida; no cambian los resultados de forma relevante.
 - Módulo de rendimiento mínimo: `configs/agronomia.yaml` (única fuente de valores por defecto), supuestos con fuente en la respuesta,
   UI y CLI; pergamino solo con factor con fuente; `docs/modelo-rendimiento.md`.
+
+### 2026-11-18 — Validación completa de M0, M1 y M2 (salidas pegadas por el equipo)
+
+Todas en la partición **val** (1 115 imágenes, 20 887 cerezas anotadas), que se usó para elegir hiperparámetros/épocas → optimistas.
+
+| Modelo (corrida) | Tarea evaluada | Exactitud | F1 macro | F1 VERDE / PINTÓN / MADURO / SOBREMADURO |
+|---|---|---|---|---|
+| M0 RF (`m0_rf_s0_20261118-0342`) | clasificar recortes de cajas anotadas | 0,819 | 0,609 | 0,823 / 0,407 / 0,891 / 0,315 |
+| M0 SVM (`m0_svm_s0_20261118-0403`) | ídem | 0,801 | 0,658 | 0,822 / 0,436 / 0,883 / 0,491 |
+| M1 MobileNetV2 sin preentrenar (`m1_mobilenetv2_96_sin_preentrenar_s0_20261118-0540`) | ídem | 0,821 | 0,705 | 0,861 / 0,510 / 0,902 / 0,547 |
+| M1 MobileNetV2 transfer learning (`m1_mobilenetv2_96_s0_20261118-0456`) | ídem | 0,871 | 0,768 | 0,902 / 0,559 / 0,930 / 0,682 |
+| M2 YOLO11n (`m2_yolo11n_640_s0_20261116-1754`) | madurez en las cerezas que localiza (IoU ≥ 0,5, conf 0,25) | 0,906 | 0,767 | — |
+
+M2 como detector (métricas propias, a través del adaptador de la app): mAP@0,5 0,590 · mAP@0,5:0,95 0,401 ·
+P/R/F1 con clase 0,841/0,774/0,806 · solo localización 0,928/0,854/0,889 · AP@0,5 VERDE 0,782, PINTÓN 0,293, MADURO 0,872, SOBREMADURO 0,414 ·
+conteo por imagen frente al conteo ANOTADO: MAE 2,06, RMSE 5,53, sesgo −1,51 (cuenta de menos), R² 0,959, r² Pearson 0,986 · 14 ms/imagen (T4).
+Ultralytics (misma corrida): mAP@0,5 0,673 · mAP@0,5:0,95 0,450.
+
+Notas de interpretación:
+- La mAP propia es menor que la de Ultralytics sobre todo por el **NMS agnóstico** del adaptador (una sola etiqueta por cereza, lo que
+  necesita el conteo); el NMS por clase de Ultralytics conserva cajas alternativas de otras clases sobre la misma cereza, lo que
+  favorece la AP de las clases ambiguas (PINTÓN 0,293 vs 0,466). Se reportan ambas (ADR-007).
+- La exactitud de M2 "en cerezas localizadas" tiene sesgo de selección (las cerezas que encuentra suelen ser las más claras): no es
+  idéntica a clasificar todos los recortes como M0/M1.
+- Transfer learning (experimento (d), 1 semilla): +0,063 en F1 macro y +0,050 en exactitud frente a la misma red sin preentrenar.
+- Curva de M2 (épocas 51–60): mAP@0,5 de val estable en 0,664–0,668 y pérdidas de val planas con la tasa de aprendizaje casi en cero:
+  entrenar más épocas con la misma configuración aportaría poco.
+- Contrato del detector con los pesos reales: OK (36 cerezas en un recorte de val).
+- M0: extracción del descriptor en CPU 150,3 s para 105 613 recortes (1,42 ms/recorte, consistente con el benchmark de CUDA).
+  SVM: 9,4 ms por recorte para predecir (RF: 0,019 ms).
